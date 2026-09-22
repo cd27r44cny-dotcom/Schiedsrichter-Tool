@@ -34,7 +34,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .errbox{padding:10px 12px;border-radius:10px;background:#fff1f2;border:1px solid #fecaca;font-size:14px}
 
 
-/* v6.4.8 – einheitliche Navigation, adaptive Seiten und geräteabhängiges Farbschema */
+/* v6.4.9 – einheitliche Navigation, adaptive Seiten und geräteabhängiges Farbschema */
 :root{color-scheme:light;--tablehead:#f0f4fa;--field:#fff;--hover:#edf3ff;--noticebg:#fff7ed;--noticeborder:#fed7aa;--successbg:#ecfdf5;--successborder:#a7f3d0;--errorbg:#fff1f2;--errorborder:#fecaca;--shadow:0 2px 14px rgba(16,24,40,.035)}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#101723;--card:#1b2534;--text:#edf2fb;--muted:#aab8cc;--border:#344357;--accent:#76a8ff;--accent2:#263e60;--danger:#ff9995;--tablehead:#222f42;--field:#202d3e;--hover:#2a405f;--noticebg:#3a3023;--noticeborder:#68512b;--successbg:#1d3b35;--successborder:#376c5d;--errorbg:#432a33;--errorborder:#814350;--shadow:0 4px 22px rgba(0,0,0,.12)}}
 :root[data-theme="dark"]{color-scheme:dark;--bg:#101723;--card:#1b2534;--text:#edf2fb;--muted:#aab8cc;--border:#344357;--accent:#76a8ff;--accent2:#263e60;--danger:#ff9995;--tablehead:#222f42;--field:#202d3e;--hover:#2a405f;--noticebg:#3a3023;--noticeborder:#68512b;--successbg:#1d3b35;--successborder:#376c5d;--errorbg:#432a33;--errorborder:#814350;--shadow:0 4px 22px rgba(0,0,0,.12)}
@@ -71,7 +71,7 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
 <body>
 <div class="wrap">
   <h1 style="margin:0 0 4px">Schiedsrichter-Verwaltung</h1>
-  <div class="muted" style="margin-bottom:14px">Version 6.4.8 PWA · neues Layout & automatischer Dunkelmodus</div>
+  <div class="muted" style="margin-bottom:14px">Version 6.4.9 PWA · neues Layout & automatischer Dunkelmodus</div>
 
   <div class="top">
     <a class="btn navlink nav-dashboard" href="#dashboard">Übersicht</a>
@@ -317,7 +317,7 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
       <div id="feeGroups"></div>
     </div>
   </section>
-  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 6.4.8 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
+  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 6.4.9 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
 </div>
 
 <dialog id="gameDlg"><form method="dialog" id="gameForm" class="modal">
@@ -1375,17 +1375,7 @@ function confirmHallMerge(id){
  const select=$('hallMerge_'+id),target=select?.value;if(!target)return;
  const old=state.halls.find(h=>String(h.id)===String(id)),keep=state.halls.find(h=>String(h.id)===String(target));
  if(!old||!keep||!confirm(`„${old.name}“ mit „${keep.name}“ zusammenführen? Die vorhandenen km und Fahrzeiten von „${keep.name}“ bleiben erhalten.`))return;
- const games=mergeHallInto(id,target);save();$('addGameTop').addEventListener('click',()=> $('addGame').click());
-const appearanceKey='sr_tool_appearance_v1';
-function applyAppearance(mode){
- const selected=['auto','light','dark'].includes(mode)?mode:'auto';
- document.documentElement.dataset.theme=selected;
- $('appearanceMode').value=selected;
- try{localStorage.setItem(appearanceKey,selected)}catch(e){}
-}
-try{applyAppearance(localStorage.getItem(appearanceKey)||'auto')}catch(e){applyAppearance('auto')}
-$('appearanceMode').addEventListener('change',e=>applyAppearance(e.target.value));
-renderAll();renderHallCleanupReview();showHashView();
+ const games=mergeHallInto(id,target);save();renderAll();renderHallCleanupReview();
  $('hallCleanupStatus').textContent=`Zusammengeführt. ${games} Spiel(e) neu zugeordnet.`;
 }
 function findOrCreateHall(location){
@@ -1643,7 +1633,18 @@ if($('mergeDefaultFees'))$('mergeDefaultFees').onclick=()=>{
 };
 function renderAll(){refreshSeasonOptions();renderDash();renderGames();renderHalls();renderRoutes();renderFees();renderPersonal();renderReport();renderTax();renderTeamAliases();updateStorageStatus()}
 
+const appearanceKey='sr_tool_appearance_v1';
+function applyAppearance(mode){
+ const selected=['auto','light','dark'].includes(mode)?mode:'auto';
+ document.documentElement.dataset.theme=selected;
+ const input=$('appearanceMode');if(input)input.value=selected;
+ try{localStorage.setItem(appearanceKey,selected)}catch(e){}
+}
 try{
+try{applyAppearance(localStorage.getItem(appearanceKey)||'auto')}catch(e){applyAppearance('auto')}
+$('appearanceMode').addEventListener('change',e=>applyAppearance(e.target.value));
+$('addGameTop').addEventListener('click',()=>openGame());
+showHashView();
 $('autoGeocodeHalls').onclick=geocodeAllHalls;$('resetGeoCache').onclick=resetGeoCache;$('autoRouteVisible').onclick=autoCalculateVisibleRoutes;$('runSelfCheck').onclick=runSelfCheck;
 $('calcDayRoutes').onclick=calculateFilteredDayRoutes;
 $('reportSeason').onchange=renderReport;$('reportYear').onchange=renderReport;$('reportAssoc').onchange=renderReport;$('exportGamesCsv').onclick=exportGamesCsv;
@@ -1880,7 +1881,7 @@ setTimeout(async()=>{await cloudStartupSync();if(state.personal.easyUrl&&state.p
 <script>
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=6.4.8', {updateViaCache:'none'}).then(reg => reg.update()).catch(err => console.warn('Service Worker:', err));
+    navigator.serviceWorker.register('./sw.js?v=6.4.9', {updateViaCache:'none'}).then(reg => reg.update()).catch(err => console.warn('Service Worker:', err));
   });
 }
 window.addEventListener('beforeinstallprompt', (event) => {
