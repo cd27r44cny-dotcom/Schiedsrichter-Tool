@@ -71,7 +71,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 <body>
 <div class="wrap">
   <h1 style="margin:0 0 4px">Schiedsrichter-Verwaltung</h1>
-  <div class="muted" style="margin-bottom:14px">Version 6.4.2 PWA · km-Anzeige mit einer Nachkommastelle</div>
+  <div class="muted" style="margin-bottom:14px">Version 6.4.4 PWA · km-Anzeige mit einer Nachkommastelle</div>
 
   <div class="top">
     <a class="btn navlink nav-dashboard" href="#dashboard">Übersicht</a>
@@ -280,6 +280,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
         <button class="btn primary" id="syncEasyRef">easyRef synchronisieren</button>
       </div>
       <div id="easyStatus" class="muted" style="margin-top:10px"></div>
+      <div style="margin-top:16px;border-top:1px solid var(--line,#ddd);padding-top:12px">
+        <strong>Gelernte Mannschaftsnamen</strong>
+        <div class="muted">Korrigiere einen Namen bei einem importierten Spiel und speichere es. Die Zuordnung wird für künftige Importe gemerkt. Hier kannst du fehlerhafte Zuordnungen wieder entfernen.</div>
+        <div id="teamAliasList" style="margin-top:8px"></div>
+      </div>
     </div>
 
     <div class="card" style="margin-top:12px">
@@ -300,7 +305,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
       <div id="feeGroups"></div>
     </div>
   </section>
-  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 6.4.2 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
+  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 6.4.4 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
 </div>
 
 <dialog id="gameDlg"><form method="dialog" id="gameForm" class="modal">
@@ -547,7 +552,7 @@ if(state.personal.postDnl==null)state.personal.postDnl=Number(state.personal.pos
 if(state.personal.postSenior==null)state.personal.postSenior=60;
 if(state.personal.vatEnabled==null)state.personal.vatEnabled=false;if(state.personal.vatRate==null)state.personal.vatRate=19;
 state.personal.start=[String(state.personal.street||'').trim(),String(state.personal.city||'').trim()].filter(Boolean).join(', ');
-state.halls=Array.isArray(state.halls)?state.halls:[];state.routes=Array.isArray(state.routes)?state.routes:[];state.fees=Array.isArray(state.fees)?state.fees:makeDefaultFees();state.games=Array.isArray(state.games)?state.games:[];
+state.teamAliases=state.teamAliases&&typeof state.teamAliases==='object'&&!Array.isArray(state.teamAliases)?state.teamAliases:{};state.halls=Array.isArray(state.halls)?state.halls:[];state.routes=Array.isArray(state.routes)?state.routes:[];state.fees=Array.isArray(state.fees)?state.fees:makeDefaultFees();state.games=Array.isArray(state.games)?state.games:[];
 const addedStandardFees=mergeMissingStandardFees();if(addedStandardFees)safeSet(KEY,JSON.stringify(state));
 state.games.forEach(g=>{if(g.tournamentNo==null)g.tournamentNo=1;if(g.hotel==null)g.hotel=0;if(g.other==null)g.other=0;if(!g.billingStatus)g.billingStatus='offen';if(g.billedDate==null)g.billedDate='';if(g.paidDate==null)g.paidDate='';if(g.cancelTravel==null)g.cancelTravel=false;if(g.needsReview==null)g.needsReview=false;if(g.cancelAmount==null)g.cancelAmount=0;if(!g.cancelMode)g.cancelMode='auto'});
 const $=id=>document.getElementById(id), money=n=>Number(n||0).toLocaleString('de-DE',{style:'currency',currency:'EUR'}), km1=n=>Number(n||0).toLocaleString('de-DE',{minimumFractionDigits:1,maximumFractionDigits:1});
@@ -664,6 +669,7 @@ async function syncCloudBidirectional(forcePrompt=false){
  if(takeRemote){
    cloudApplying=true;
    state=remote.data;
+   repairExistingEasyRefTeams();
    safeSet(KEY,JSON.stringify(state));
    cloudApplying=false;
    renderAll();
@@ -1138,6 +1144,46 @@ function extractEasyRefCrew(text,system){
  const used={HSR:0,LSR:0,SR:0};
  return labels.map(k=>`${k}: ${vals[k][used[k]++]||''}`).join('\n');
 }
+// User corrections are stored with the other app data and included in backups/cloud sync.
+function teamAliasKey(name){return String(name||'').trim().replace(/\s+/g,' ').toLocaleLowerCase('de-DE')}
+function applyTeamAlias(name){
+ const corrected=repairEasyRefText(name);
+ return state.teamAliases?.[teamAliasKey(name)]||state.teamAliases?.[teamAliasKey(corrected)]||corrected;
+}
+function learnTeamAlias(from,to){
+ const old=String(from||'').trim(),next=String(to||'').trim();
+ if(!old||!next||old===next)return false;
+ const key=teamAliasKey(old);
+ if(state.teamAliases[key]===next)return false;
+ state.teamAliases[key]=next;
+ return true;
+}
+function updateUneditedImportedTeams(){
+ let count=0;
+ for(const g of state.games||[]){
+  if(g.source!=='easyRef'||!g.easyRefSnapshot)continue;
+  for(const field of ['home','away']){
+   const snap=g.easyRefSnapshot;
+   if(g[field]!==snap[field])continue; // preserve a manually changed game
+   const corrected=applyTeamAlias(snap['raw'+field[0].toUpperCase()+field.slice(1)]||snap[field]);
+   if(corrected&&corrected!==g[field]){g[field]=corrected;snap[field]=corrected;count++}
+  }
+ }
+ return count;
+}
+function renderTeamAliases(){
+ const panel=$('teamAliasList');if(!panel)return;
+ const entries=Object.entries(state.teamAliases||{}).sort((a,b)=>a[0].localeCompare(b[0],'de'));
+ panel.replaceChildren();
+ if(!entries.length){panel.textContent='Noch keine eigenen Korrekturen gespeichert.';return}
+ for(const [key,value] of entries){
+  const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0;flex-wrap:wrap';
+  const label=document.createElement('span');label.textContent=key+' → '+value;
+  const btn=document.createElement('button');btn.type='button';btn.className='btn';btn.textContent='Entfernen';
+  btn.onclick=()=>{if(!confirm('Diese Namenszuordnung entfernen?'))return;delete state.teamAliases[key];save();renderTeamAliases()};
+  row.append(label,btn);panel.appendChild(row);
+ }
+}
 function parseEasyRefICS(raw){
  const txt=unfoldICS(raw),blocks=txt.split('BEGIN:VEVENT').slice(1).map(x=>x.split('END:VEVENT')[0]),out=[];
  for(const b of blocks){
@@ -1155,9 +1201,10 @@ function parseEasyRefICS(raw){
    const sm=desc.match(/(?:^|\n)\s*(?:System|Schiedsrichtersystem)\s*:\s*([234])(?:\s*[- ]?Mann)?\b/i);
    if(sm)system=sm[1];
    const vs=summary.split(/\s+(?:vs\.?|gegen|–|-)\s+/i);
-   const home=repairEasyRefText((vs[0]||summary).trim()),away=repairEasyRefText((vs[1]||'').trim());
+   const rawHome=(vs[0]||summary).trim(),rawAway=(vs[1]||'').trim();
+   const home=applyTeamAlias(rawHome),away=applyTeamAlias(rawAway);
    const crewNote=system?extractEasyRefCrew(desc,system):'';
-   out.push({uid,assoc:'DEB',date:dt.date,start:dt.time||'',home,away,league,role,system,location:repairEasyRefText(loc),crewNote});
+   out.push({uid,assoc:'DEB',date:dt.date,start:dt.time||'',home,away,rawHome,rawAway,league,role,system,location:repairEasyRefText(loc),crewNote});
  }
  return out;
 }
@@ -1165,7 +1212,7 @@ function parseEasyRefICS(raw){
 function repairEasyRefText(value){
  let v=String(value||'');
  const replacements=[
-  [/Jung-Eisb\?ren/gi,'Jung-Eisbären'],[/T\?lzer/gi,'Tölzer'],
+  [/Jung-Eisb\?ren/gi,'Jung-Eisbären'],[/T\?lzer L\?wen/gi,'Tölzer Löwen'],[/T\?lzer/gi,'Tölzer'],
   [/M\?nchen/gi,'München'],[/N\?rnberg/gi,'Nürnberg'],
   [/Selber W\?lfe/gi,'Selber Wölfe'],[/F\?rderverein/gi,'Förderverein'],
   [/Eichwaldstra\?e/gi,'Eichwaldstraße'],[/Messestra\?e/gi,'Messestraße'],
@@ -1173,6 +1220,33 @@ function repairEasyRefText(value){
  ];
  for(const [re,replacement] of replacements)v=v.replace(re,replacement);
  return v;
+}
+// Repair previously imported names only when they match a documented easyRef team.
+// Never replace arbitrary question marks or rewrite manually edited team names.
+function repairExistingEasyRefTeams(){
+ let count=0;
+ const known=new Map([
+  ['Jung-Eisb?ren Regensburg','Jung-Eisbären Regensburg'],
+  ['T?lzer L?wen','Tölzer Löwen'],
+  ['Rookie Bulls M?nchen','Rookie Bulls München'],
+  ['EHC 80 N?rnberg','EHC 80 Nürnberg'],
+  ['Selber W?lfe','Selber Wölfe']
+ ]);
+ for(const g of state.games||[]){
+  if(g.source!=='easyRef')continue;
+  for(const field of ['home','away']){
+   const current=String(g[field]||'');
+   const corrected=known.get(current);
+   if(!corrected)continue;
+   const snap=g.easyRefSnapshot;
+   // Preserve edits: only migrate fields still identical to the imported value,
+   // or legacy imported fields without a previous snapshot.
+   if(snap&&snap[field]!==current)continue;
+   g[field]=corrected;count++;
+   if(snap)snap[field]=corrected;
+  }
+ }
+ return count;
 }
 function normalizedHallLocation(v){
  return repairEasyRefText(v).toLocaleLowerCase('de').normalize('NFKD')
@@ -1293,11 +1367,13 @@ function findOrCreateHall(location){
  return id;
 }
 function importEasyEvents(events){
+ repairExistingEasyRefTeams();
+ updateUneditedImportedTeams();
  let added=0,updated=0,skipped=0,review=0;
  for(const e of events){
    const key=e.uid; if(!key)continue;
    const existing=state.games.find(g=>g.source==='easyRef'&&g.sourceKey===key);
-   const incoming={date:e.date,start:e.start||'',home:e.home||'',away:e.away||'',location:e.location||''};
+   const incoming={date:e.date,start:e.start||'',home:e.home||'',away:e.away||'',rawHome:e.rawHome||e.home||'',rawAway:e.rawAway||e.away||'',location:e.location||''};
    if(existing){
      let changed=false;
      // Only update fields still matching the previous import. User edits win.
@@ -1491,7 +1567,7 @@ if($('mergeDefaultFees'))$('mergeDefaultFees').onclick=()=>{
  const n=mergeMissingStandardFees();save();renderFees();
  alert(n?`${n} fehlende Standardgebühr(en) ergänzt.`:'Alle hinterlegten Standardgebühren sind bereits vorhanden.');
 };
-function renderAll(){refreshSeasonOptions();renderDash();renderGames();renderHalls();renderRoutes();renderFees();renderPersonal();renderReport();renderTax();updateStorageStatus()}
+function renderAll(){refreshSeasonOptions();renderDash();renderGames();renderHalls();renderRoutes();renderFees();renderPersonal();renderReport();renderTax();renderTeamAliases();updateStorageStatus()}
 
 try{
 $('autoGeocodeHalls').onclick=geocodeAllHalls;$('resetGeoCache').onclick=resetGeoCache;$('autoRouteVisible').onclick=autoCalculateVisibleRoutes;$('runSelfCheck').onclick=runSelfCheck;
@@ -1618,7 +1694,25 @@ $('gameForm').onsubmit=async e=>{
  const g=gameDraft();
  if(!g.date||!g.home||!g.away||!g.league)return;if(!g.role||!g.system){alert('Bitte Funktion und System auswählen.');return;}
  const i=state.games.findIndex(x=>x.id===g.id);
- if(i>=0)state.games[i]=g;else state.games.push(g);
+ if(i>=0){
+   const old=state.games[i];
+   if(old.source==='easyRef'){
+     // Keep the original import snapshot; otherwise future re-imports cannot distinguish manual edits.
+     g.easyRefSnapshot=old.easyRefSnapshot;
+     if(old.easyRefSnapshot){
+       for(const field of ['home','away']){
+         const original=old.easyRefSnapshot[field];
+         if(g[field]!==old[field]&&g[field]&&original){
+           learnTeamAlias(original,g[field]);
+           const rawField='raw'+field[0].toUpperCase()+field.slice(1);
+           if(old.easyRefSnapshot[rawField])learnTeamAlias(old.easyRefSnapshot[rawField],g[field]);
+         }
+       }
+     }
+   }
+   state.games[i]=g;
+ }else state.games.push(g);
+ updateUneditedImportedTeams();
  save();$('gameDlg').close();renderAll();
 
  if(g.date&&g.hallId&&state.personal?.start){
@@ -1688,7 +1782,7 @@ $('addFee').onclick=()=>openFee();$('closeFee').onclick=()=>$('feeDlg').close();
 };
 
 renderSyncConfig();
-const startupCleanup=reconcileImportedHalls();if(startupCleanup.merged)save();
+const startupCleanup=reconcileImportedHalls();const repairedTeams=repairExistingEasyRefTeams()+updateUneditedImportedTeams();if(startupCleanup.merged||repairedTeams)save();
 renderAll();renderHallCleanupReview();
 setTimeout(cloudStartupSync,500);
 }catch(err){
@@ -1712,7 +1806,7 @@ setTimeout(cloudStartupSync,500);
 <script>
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=6.4.2', {updateViaCache:'none'}).then(reg => reg.update()).catch(err => console.warn('Service Worker:', err));
+    navigator.serviceWorker.register('./sw.js?v=6.4.4', {updateViaCache:'none'}).then(reg => reg.update()).catch(err => console.warn('Service Worker:', err));
   });
 }
 window.addEventListener('beforeinstallprompt', (event) => {
