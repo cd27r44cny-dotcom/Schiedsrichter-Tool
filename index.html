@@ -71,7 +71,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 <body>
 <div class="wrap">
   <h1 style="margin:0 0 4px">Schiedsrichter-Verwaltung</h1>
-  <div class="muted" style="margin-bottom:14px">Version 6.4.6 PWA · km-Anzeige mit einer Nachkommastelle</div>
+  <div class="muted" style="margin-bottom:14px">Version 6.4.7 PWA · km-Anzeige mit einer Nachkommastelle</div>
 
   <div class="top">
     <a class="btn navlink nav-dashboard" href="#dashboard">Übersicht</a>
@@ -99,6 +99,14 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
       <div class="sectiontitle">Auswertung</div>
       <div id="dashDetails"></div>
     </div>
+    <div class="card" style="margin-top:12px">
+      <div class="sectiontitle">Tagesübersicht</div>
+      <div class="muted">Bei mehreren Spielen am selben Tag wird die Abwesenheit vom ersten Losfahren bis zur letzten Rückkehr zusammengefasst. Die Kilometer können über die hinterlegten Hallenstrecken automatisch aufgeteilt werden.</div>
+      <div class="tablewrap" style="margin-top:10px"><table>
+        <thead><tr><th>Datum</th><th>Spiele</th><th>Route</th><th>Abfahrt</th><th>Rückkehr</th><th class="right">Abwesenheit</th><th class="right">km</th><th class="right">Pauschale</th></tr></thead>
+        <tbody id="daysBody"></tbody>
+      </table></div>
+    </div>
   </section>
 
   <section id="games" class="view">
@@ -123,14 +131,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
       <thead><tr><th>Datum</th><th>Uhrzeit</th><th>Verband</th><th>Spiel</th><th>Liga / Funktion</th><th>Halle</th><th class="right">Regel</th><th class="right">Tatsächlich</th><th class="right">km</th><th></th></tr></thead>
       <tbody id="gamesBody"></tbody>
     </table></div>
-    <div class="card" style="margin-top:12px">
-      <div class="sectiontitle">Tagesübersicht</div>
-      <div class="muted">Bei mehreren Spielen am selben Tag wird die Abwesenheit vom ersten Losfahren bis zur letzten Rückkehr zusammengefasst. Die Kilometer können über die hinterlegten Hallenstrecken automatisch aufgeteilt werden.</div>
-      <div class="tablewrap" style="margin-top:10px"><table>
-        <thead><tr><th>Datum</th><th>Spiele</th><th>Route</th><th>Abfahrt</th><th>Rückkehr</th><th class="right">Abwesenheit</th><th class="right">km</th><th class="right">Pauschale</th></tr></thead>
-        <tbody id="daysBody"></tbody>
-      </table></div>
-    </div>
+
   </section>
 
 
