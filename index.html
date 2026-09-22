@@ -18,32 +18,9 @@ dialog{border:1px solid var(--border);border-radius:16px;padding:0;max-width:760
 
 .navlink{display:inline-flex;align-items:center;text-decoration:none;color:var(--text)}
 .navlink:hover{background:#f8fafc}
-#games:target,#report:target,#settings:target,#tax:target{display:block}
-body:has(#games:target) #dashboard,
-body:has(#report:target) #dashboard,
-body:has(#settings:target) #dashboard,
-body:has(#tax:target) #dashboard{display:none}
-body:has(#games:target) #report,
-body:has(#games:target) #settings,
-body:has(#games:target) #tax,
-body:has(#report:target) #games,
-body:has(#report:target) #settings,
-body:has(#report:target) #tax,
-body:has(#settings:target) #games,
-body:has(#settings:target) #report,
-body:has(#settings:target) #tax,
-body:has(#tax:target) #games,
-body:has(#tax:target) #report,
-body:has(#tax:target) #settings{display:none}
-body:has(#games:target) .nav-games,
-body:has(#settings:target) .nav-settings,
-body:has(#report:target) .nav-report,
-body:has(#tax:target) .nav-tax,
-body:not(:has(#games:target)):not(:has(#settings:target)):not(:has(#tax:target)) .nav-dashboard{
-  background:var(--accent);border-color:var(--accent);color:#fff
-}
-
-
+/* Die Navigation wird zentral durch showHashView gesteuert. */
+.navlink.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.navlink:hover:not(.active){background:var(--accent2)}
 @media(max-width:760px){
  .wrap{padding:10px}.top{position:sticky;top:0;z-index:20;background:var(--bg);padding:8px 0;margin-bottom:10px}
  .grid4{grid-template-columns:repeat(2,1fr)}.formgrid{grid-template-columns:1fr}
@@ -56,9 +33,32 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .okbox{padding:10px 12px;border-radius:10px;background:#ecfdf5;border:1px solid #a7f3d0;font-size:14px}
 .errbox{padding:10px 12px;border-radius:10px;background:#fff1f2;border:1px solid #fecaca;font-size:14px}
 
+
+/* v6.4.8 – einheitliche Navigation, adaptive Seiten und geräteabhängiges Farbschema */
+:root{color-scheme:light;--tablehead:#f0f4fa;--field:#fff;--hover:#edf3ff;--noticebg:#fff7ed;--noticeborder:#fed7aa;--successbg:#ecfdf5;--successborder:#a7f3d0;--errorbg:#fff1f2;--errorborder:#fecaca;--shadow:0 2px 14px rgba(16,24,40,.035)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#101723;--card:#1b2534;--text:#edf2fb;--muted:#aab8cc;--border:#344357;--accent:#76a8ff;--accent2:#263e60;--danger:#ff9995;--tablehead:#222f42;--field:#202d3e;--hover:#2a405f;--noticebg:#3a3023;--noticeborder:#68512b;--successbg:#1d3b35;--successborder:#376c5d;--errorbg:#432a33;--errorborder:#814350;--shadow:0 4px 22px rgba(0,0,0,.12)}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#101723;--card:#1b2534;--text:#edf2fb;--muted:#aab8cc;--border:#344357;--accent:#76a8ff;--accent2:#263e60;--danger:#ff9995;--tablehead:#222f42;--field:#202d3e;--hover:#2a405f;--noticebg:#3a3023;--noticeborder:#68512b;--successbg:#1d3b35;--successborder:#376c5d;--errorbg:#432a33;--errorborder:#814350;--shadow:0 4px 22px rgba(0,0,0,.12)}
+body{background:var(--bg);color:var(--text);transition:background .15s,color .15s}
+.wrap{max-width:1360px;padding:22px 22px 30px}
+.top{position:sticky;top:0;z-index:20;background:var(--bg);padding:10px 0 12px;border-bottom:1px solid var(--border);margin-bottom:20px;align-items:center}
+.card{box-shadow:var(--shadow)}.pageheading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:8px 0 16px}.pageheading h2{font-size:25px;letter-spacing:-.5px;margin:0 0 5px}.pageheading p{margin:0;color:var(--muted);font-size:14px}
+.filterbar{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;align-items:center;margin-bottom:14px}
+.btn,.field input,.field select,.field textarea,dialog,select,input,textarea{background:var(--field);color:var(--text);border-color:var(--border)}
+.btn:hover:not(.primary):not(.active){background:var(--hover)}.btn.primary,.btn.active,.navlink.active{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.tablewrap{background:var(--card);border-color:var(--border)}th{background:var(--tablehead);color:var(--text);position:sticky;top:0}td{color:var(--text)}tr:hover td{background:var(--hover)}
+.subhead{background:var(--accent2)}.status{background:var(--accent2);color:var(--text)}.notice{background:var(--noticebg);border-color:var(--noticeborder);color:var(--text)}.okbox{background:var(--successbg);border-color:var(--successborder);color:var(--text)}.errbox,.danger{background:var(--errorbg);border-color:var(--errorborder);color:var(--text)}
+dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}dialog::backdrop{background:rgba(0,0,0,.65)}
+#games .games-table{max-width:100%;}#games .games-table table{min-width:1060px}#games .games-table td{vertical-align:middle}
+#settings>.card,#report>.card,#tax>.card{margin-top:14px}
+#addGameTop{white-space:nowrap}#games .filterbar #addGame{display:none}
+.view[hidden]{display:none!important}
+@media(max-width:760px){.wrap{padding:12px}.top{overflow-x:auto;flex-wrap:nowrap;gap:7px;padding:9px 0}.top .navlink{white-space:nowrap;flex:none}.top>button{flex:none;white-space:nowrap}.pageheading h2{font-size:22px}.filterbar{padding:10px}.filterbar select{flex:1 1 145px;min-width:0}.filterbar button{flex:1 1 auto}.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}.big{font-size:22px}.card{padding:13px}.pageheading{align-items:flex-start}}
+@media(max-width:480px){.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}.big{font-size:20px}.pageheading{flex-wrap:wrap}.pageheading #addGameTop{width:100%}.filterbar select{flex:1 1 100%}.filterbar button{flex:1 1 100%}.formgrid{grid-template-columns:minmax(0,1fr)}}
 </style>
 
-<meta name="theme-color" content="#0f172a">
+<meta name="theme-color" content="#f5f7fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101723" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="SR-Verwaltung">
@@ -71,7 +71,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 <body>
 <div class="wrap">
   <h1 style="margin:0 0 4px">Schiedsrichter-Verwaltung</h1>
-  <div class="muted" style="margin-bottom:14px">Version 6.4.7 PWA · km-Anzeige mit einer Nachkommastelle</div>
+  <div class="muted" style="margin-bottom:14px">Version 6.4.8 PWA · neues Layout & automatischer Dunkelmodus</div>
 
   <div class="top">
     <a class="btn navlink nav-dashboard" href="#dashboard">Übersicht</a>
@@ -83,8 +83,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   </div>
   <noscript><div class="notice" style="margin-bottom:12px"><strong>Hinweis:</strong> Die Navigation funktioniert auch ohne JavaScript. Berechnungen, Speichern und Exportieren benötigen jedoch einen normalen Browser mit aktiviertem JavaScript.</div></noscript>
 
-  <section id="dashboard" class="view" style="display:block">
-    <div class="toolbar">
+  <section id="dashboard" class="view active">
+    <div class="pageheading"><div><h2>Übersicht</h2><p>Deine Saison auf einen Blick – Gebühren, Kilometer und Tagesrouten.</p></div></div>
+    <div class="toolbar filterbar">
       <select id="dashSeason" class="btn"><option value="all">Alle Saisons</option></select>
       <select id="dashYear" class="btn"><option value="all">Alle Kalenderjahre</option></select>
       <select id="dashAssoc" class="btn"><option value="all">DEB + BEV</option><option>DEB</option><option>BEV</option></select>
@@ -96,7 +97,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
       <div class="card"><div class="muted">Verpflegungspauschale</div><div class="big" id="statMeal">0,00 €</div></div>
     </div>
     <div class="card" style="margin-top:12px">
-      <div class="sectiontitle">Auswertung</div>
+      <div class="sectiontitle">Monatsübersicht & Kennzahlen</div>
       <div id="dashDetails"></div>
     </div>
     <div class="card" style="margin-top:12px">
@@ -110,7 +111,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   </section>
 
   <section id="games" class="view">
-    <div class="toolbar">
+    <div class="pageheading"><div><h2>Spiele</h2><p>Deine Ansetzungen verwalten und abrechnen.</p></div><button type="button" class="btn primary" id="addGameTop">+ Spiel hinzufügen</button></div>
+    <div class="toolbar filterbar">
       <select id="gameSeasonFilter" class="btn"><option value="all">Alle Saisons</option></select>
       <select id="gameYearFilter" class="btn"><option value="all">Alle Kalenderjahre</option></select>
       <select id="gameAssocFilter" class="btn"><option value="all">DEB + BEV</option><option>DEB</option><option>BEV</option></select>
@@ -125,9 +127,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
       <button type="button" class="btn primary" id="addGame">+ Spiel hinzufügen</button>
       <button type="button" class="btn" id="calcDayRoutes">Tagesrouten neu berechnen</button>
       <button class="btn" onclick="autoCalculateVisibleRoutes()">km automatisch online berechnen</button>
-      <span class="muted">Unterstützt 1, 2, 3 oder beliebig viele Spiele am selben Tag.</span>
+
     </div>
-    <div class="tablewrap"><table>
+    <div class="tablewrap games-table"><table>
       <thead><tr><th>Datum</th><th>Uhrzeit</th><th>Verband</th><th>Spiel</th><th>Liga / Funktion</th><th>Halle</th><th class="right">Regel</th><th class="right">Tatsächlich</th><th class="right">km</th><th></th></tr></thead>
       <tbody id="gamesBody"></tbody>
     </table></div>
@@ -137,7 +139,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 
 
   <section id="report" class="view">
-    <div class="toolbar">
+    <div class="pageheading"><div><h2>Auswertung</h2><p>Gebühren und Einsätze nach Liga und Funktion.</p></div></div>
+    <div class="toolbar filterbar">
       <select id="reportSeason" class="btn"><option value="all">Alle Saisons</option></select>
       <select id="reportYear" class="btn"><option value="all">Alle Kalenderjahre</option></select>
       <select id="reportAssoc" class="btn"><option value="all">DEB + BEV</option><option>DEB</option><option>BEV</option></select>
@@ -160,7 +163,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   </section>
 
   <section id="tax" class="view">
-    <div class="toolbar">
+    <div class="pageheading"><div><h2>Steuer</h2><p>Jahreswerte und interne Berechnungshilfen.</p></div></div>
+    <div class="toolbar filterbar">
       <select id="taxYear" class="btn"><option value="all">Alle Kalenderjahre</option></select>
       <button type="button" class="btn" id="exportTaxCsv">Steuerübersicht als CSV</button>
     </div>
@@ -181,7 +185,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   </section>
 
   <section id="settings" class="view">
+    <div class="pageheading"><div><h2>Einstellungen</h2><p>Darstellung, Datensicherung, Synchronisierung und Gebühren.</p></div></div>
     <div class="card">
+      <div class="sectiontitle">Darstellung</div>
+      <div class="formgrid"><label class="field">Farbschema<select id="appearanceMode"><option value="auto">Automatisch (Geräteeinstellung)</option><option value="light">Immer hell</option><option value="dark">Immer dunkel</option></select></label></div>
+      <div class="muted" style="margin-top:10px">Automatisch folgt dem Hell-/Dunkelmodus deines iPads oder iPhones und wechselt mit dessen Systemeinstellung.</div>
+    </div>
+    <div class="card" style="margin-top:12px">
       <div class="sectiontitle">Datenspeicherung</div>
       <div id="storageStatus" class="muted">Speicherstatus wird geprüft …</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
@@ -307,7 +317,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
       <div id="feeGroups"></div>
     </div>
   </section>
-  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 6.4.5 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
+  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 6.4.8 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
 </div>
 
 <dialog id="gameDlg"><form method="dialog" id="gameForm" class="modal">
@@ -1007,17 +1017,27 @@ function calculateFilteredDayRoutes(){
  const groups=dayGroups(filteredGames(false)),errors=[];
  Object.entries(groups).forEach(([date,arr])=>{const r=calcOneDay(date,arr,true);if(!r.ok)errors.push(r.error)});
  save();
-function showHashView(){
- const id=(location.hash||'#dashboard').slice(1);
- ['dashboard','games','report','tax','settings'].forEach(v=>{const el=$(v);if(el)el.style.display=(v===id?'block':'none')});
- document.querySelectorAll('.top .navlink').forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+id));
-}
-window.addEventListener('hashchange',showHashView);
-
-renderAll();showHashView();
+renderAll();
  if(errors.length)alert('Einige Tagesrouten konnten nicht berechnet werden:\\n\\n'+errors.join('\\n'));
  else alert('Tagesrouten wurden berechnet. Manuelle km- oder Zeitwerte kannst du anschließend weiterhin ändern.');
 }
+
+function showHashView(){
+ const raw=(location.hash||'#dashboard').slice(1);
+ const id=['dashboard','games','report','tax','settings'].includes(raw)?raw:'dashboard';
+ document.querySelectorAll('.view').forEach(el=>{
+   const visible=el.id===id;
+   el.classList.toggle('active',visible);
+   el.hidden=!visible;
+   el.style.display=visible?'block':'none';
+ });
+ document.querySelectorAll('.top .navlink').forEach(a=>{
+   const active=a.getAttribute('href')==='#'+id;
+   a.classList.toggle('active',active);
+   if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
+ });
+}
+window.addEventListener('hashchange',showHashView);
 
 function refreshSeasonOptions(){
  const seasons=[...new Set(state.fees.map(x=>x.season).concat(state.games.map(x=>seasonFromDate(x.date)).filter(Boolean)))].sort((a,b)=>seasonRank(b)-seasonRank(a));
@@ -1355,7 +1375,17 @@ function confirmHallMerge(id){
  const select=$('hallMerge_'+id),target=select?.value;if(!target)return;
  const old=state.halls.find(h=>String(h.id)===String(id)),keep=state.halls.find(h=>String(h.id)===String(target));
  if(!old||!keep||!confirm(`„${old.name}“ mit „${keep.name}“ zusammenführen? Die vorhandenen km und Fahrzeiten von „${keep.name}“ bleiben erhalten.`))return;
- const games=mergeHallInto(id,target);save();renderAll();renderHallCleanupReview();
+ const games=mergeHallInto(id,target);save();$('addGameTop').addEventListener('click',()=> $('addGame').click());
+const appearanceKey='sr_tool_appearance_v1';
+function applyAppearance(mode){
+ const selected=['auto','light','dark'].includes(mode)?mode:'auto';
+ document.documentElement.dataset.theme=selected;
+ $('appearanceMode').value=selected;
+ try{localStorage.setItem(appearanceKey,selected)}catch(e){}
+}
+try{applyAppearance(localStorage.getItem(appearanceKey)||'auto')}catch(e){applyAppearance('auto')}
+$('appearanceMode').addEventListener('change',e=>applyAppearance(e.target.value));
+renderAll();renderHallCleanupReview();showHashView();
  $('hallCleanupStatus').textContent=`Zusammengeführt. ${games} Spiel(e) neu zugeordnet.`;
 }
 function findOrCreateHall(location){
@@ -1850,7 +1880,7 @@ setTimeout(async()=>{await cloudStartupSync();if(state.personal.easyUrl&&state.p
 <script>
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=6.4.5', {updateViaCache:'none'}).then(reg => reg.update()).catch(err => console.warn('Service Worker:', err));
+    navigator.serviceWorker.register('./sw.js?v=6.4.8', {updateViaCache:'none'}).then(reg => reg.update()).catch(err => console.warn('Service Worker:', err));
   });
 }
 window.addEventListener('beforeinstallprompt', (event) => {
