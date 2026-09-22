@@ -34,7 +34,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .errbox{padding:10px 12px;border-radius:10px;background:#fff1f2;border:1px solid #fecaca;font-size:14px}
 
 
-/* v6.4.9 – einheitliche Navigation, adaptive Seiten und geräteabhängiges Farbschema */
+/* v6.4.10 – einheitliche Navigation, adaptive Seiten und geräteabhängiges Farbschema */
 :root{color-scheme:light;--tablehead:#f0f4fa;--field:#fff;--hover:#edf3ff;--noticebg:#fff7ed;--noticeborder:#fed7aa;--successbg:#ecfdf5;--successborder:#a7f3d0;--errorbg:#fff1f2;--errorborder:#fecaca;--shadow:0 2px 14px rgba(16,24,40,.035)}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#101723;--card:#1b2534;--text:#edf2fb;--muted:#aab8cc;--border:#344357;--accent:#76a8ff;--accent2:#263e60;--danger:#ff9995;--tablehead:#222f42;--field:#202d3e;--hover:#2a405f;--noticebg:#3a3023;--noticeborder:#68512b;--successbg:#1d3b35;--successborder:#376c5d;--errorbg:#432a33;--errorborder:#814350;--shadow:0 4px 22px rgba(0,0,0,.12)}}
 :root[data-theme="dark"]{color-scheme:dark;--bg:#101723;--card:#1b2534;--text:#edf2fb;--muted:#aab8cc;--border:#344357;--accent:#76a8ff;--accent2:#263e60;--danger:#ff9995;--tablehead:#222f42;--field:#202d3e;--hover:#2a405f;--noticebg:#3a3023;--noticeborder:#68512b;--successbg:#1d3b35;--successborder:#376c5d;--errorbg:#432a33;--errorborder:#814350;--shadow:0 4px 22px rgba(0,0,0,.12)}
@@ -71,7 +71,7 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
 <body>
 <div class="wrap">
   <h1 style="margin:0 0 4px">Schiedsrichter-Verwaltung</h1>
-  <div class="muted" style="margin-bottom:14px">Version 6.4.9 PWA · neues Layout & automatischer Dunkelmodus</div>
+  <div class="muted" style="margin-bottom:14px">Version 6.4.10 PWA · neues Layout & automatischer Dunkelmodus</div>
 
   <div class="top">
     <a class="btn navlink nav-dashboard" href="#dashboard">Übersicht</a>
@@ -317,7 +317,7 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
       <div id="feeGroups"></div>
     </div>
   </section>
-  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 6.4.9 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
+  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 6.4.10 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
 </div>
 
 <dialog id="gameDlg"><form method="dialog" id="gameForm" class="modal">
@@ -568,8 +568,31 @@ state.teamAliases=state.teamAliases&&typeof state.teamAliases==='object'&&!Array
 const addedStandardFees=mergeMissingStandardFees();if(addedStandardFees)safeSet(KEY,JSON.stringify(state));
 state.games.forEach(g=>{if(g.tournamentNo==null)g.tournamentNo=1;if(g.hotel==null)g.hotel=0;if(g.other==null)g.other=0;if(!g.billingStatus)g.billingStatus='offen';if(g.billedDate==null)g.billedDate='';if(g.paidDate==null)g.paidDate='';if(g.cancelTravel==null)g.cancelTravel=false;if(g.needsReview==null)g.needsReview=false;if(g.cancelAmount==null)g.cancelAmount=0;if(!g.cancelMode)g.cancelMode='auto'});
 const $=id=>document.getElementById(id), money=n=>Number(n||0).toLocaleString('de-DE',{style:'currency',currency:'EUR'}), km1=n=>Number(n||0).toLocaleString('de-DE',{minimumFractionDigits:1,maximumFractionDigits:1});
+// Imported games are only pending when required data or an explicitly retained conflict is unresolved.
+// Legacy needsReview=true alone is not an independent conflict: old imports kept that flag
+// even after the user supplied all required fields.
+function importRequiredMissing(g){
+ if(g.source!=='easyRef')return false;
+ const league=String(g.league||'').trim();
+ return !league||/^unbekannt\s*[–-]\s*prüfen$/i.test(league)||
+   !String(g.role||'').trim()||!String(g.system||'').trim()||
+   !g.hallId||!state.halls.some(h=>String(h.id)===String(g.hallId));
+}
+function syncImportReview(g){
+ if(g.source!=='easyRef')return false;
+ const next=importRequiredMissing(g)||!!g.reviewConflict;
+ if(g.needsReview===next)return false;
+ g.needsReview=next;
+ return true;
+}
+function syncAllImportReviews(){
+ let changed=false;
+ state.games.forEach(g=>{if(syncImportReview(g))changed=true});
+ return changed;
+}
 let cloudPushTimer=null,cloudApplying=false;
 function save(){
+ syncAllImportReviews();
  if(!cloudApplying){
    state._meta=state._meta||{};
    state._meta.updatedAt=Date.now();
@@ -1433,11 +1456,9 @@ function importEasyEvents(events){
        // Do not overwrite league, role, system, notes, fees or billing information.
        if(JSON.stringify(prev)!==JSON.stringify(incoming)){existing.easyRefSnapshot=incoming;changed=true}
      }
-     if(!prev){existing.easyRefSnapshot=incoming;existing.needsReview=true;changed=true}
+     if(!prev){existing.easyRefSnapshot=incoming;changed=true}
      if(existing.system&&isBlankCrewTemplate(existing.note)&&!existing.note){existing.note=crewTemplate(existing.system);changed=true}
-     if(!existing.league||existing.league==='Unbekannt – prüfen'||!existing.role||!existing.system){
-       if(!existing.needsReview){existing.needsReview=true;changed=true}
-     }
+     if(syncImportReview(existing))changed=true;
      if(changed)updated++;else skipped++;
      if(existing.needsReview)review++;
      continue;
@@ -1631,7 +1652,7 @@ if($('mergeDefaultFees'))$('mergeDefaultFees').onclick=()=>{
  const n=mergeMissingStandardFees();save();renderFees();
  alert(n?`${n} fehlende Standardgebühr(en) ergänzt.`:'Alle hinterlegten Standardgebühren sind bereits vorhanden.');
 };
-function renderAll(){refreshSeasonOptions();renderDash();renderGames();renderHalls();renderRoutes();renderFees();renderPersonal();renderReport();renderTax();renderTeamAliases();updateStorageStatus()}
+function renderAll(){syncAllImportReviews();refreshSeasonOptions();renderDash();renderGames();renderHalls();renderRoutes();renderFees();renderPersonal();renderReport();renderTax();renderTeamAliases();updateStorageStatus()}
 
 const appearanceKey='sr_tool_appearance_v1';
 function applyAppearance(mode){
@@ -1745,7 +1766,7 @@ function refreshGameConditionalFields(){
  $('needsReviewWrap').classList.toggle('show',imported);
 }
 window.openGame=function(id){
- $('gameForm').reset();$('gActual').dataset.manual='0';$('gId').value='';$('gSource').value='manual';$('gSourceKey').value='';$('gDate').value=new Date().toISOString().slice(0,10);$('gStart').value='';$('gRole').value='';$('gSystem').value='';$('gNote').value='';$('gTournamentNo').value='1';$('gHotel').value='0';$('gOther').value='0';$('gBillingStatus').value='offen';$('gBilledDate').value='';$('gPaidDate').value='';$('gCancelTravel').checked=false;$('gExtraCosts').checked=false;$('gInvoiceTravel').checked=false;$('gNeedsReview').checked=false;$('gCancelAmount').value='0';$('gCancelMode').value='auto';fillHallSelect();
+ $('gameForm').reset();$('gActual').dataset.manual='0';$('gId').value='';$('gSource').value='manual';$('gSourceKey').value='';$('gDate').value=new Date().toISOString().slice(0,10);$('gStart').value='';$('gRole').value='';$('gSystem').value='';$('gNote').value='';$('gTournamentNo').value='1';$('gHotel').value='0';$('gOther').value='0';$('gBillingStatus').value='offen';$('gBilledDate').value='';$('gPaidDate').value='';$('gCancelTravel').checked=false;$('gExtraCosts').checked=false;$('gInvoiceTravel').checked=false;$('gNeedsReview').checked=false;$('gNeedsReview').dataset.touched='0';$('gCancelAmount').value='0';$('gCancelMode').value='auto';fillHallSelect();
  if(id){
    const g=state.games.find(x=>x.id===id);
    $('gAssoc').value=g.assoc||'DEB';$('gDate').value=g.date||'';updateGameLeagueOptions(g.league||'',false);
@@ -1761,12 +1782,21 @@ function gameDraft(){return{id:Number($('gId').value)||Date.now(),source:$('gSou
 function updateGameRule(force=false){const draft=gameDraft(),a=feeRule(draft);$('gRule').value=a.toFixed(2);if(force||$('gActual').dataset.manual!=='1'){if(force)$('gActual').dataset.manual='0';draft.actualManual=false;draft.actual=a;const shown=draft.cancelled?cancellationAmount(draft):a;$('gActual').value=shown.toFixed(2)}}
 $('gAssoc').onchange=()=>{updateGameLeagueOptions('',true);updateGameRule(true);refreshGameConditionalFields()};$('gDate').onchange=()=>{updateGameLeagueOptions('',true);updateGameRule(true);refreshGameConditionalFields()};['gLeague','gRole','gStart','gTournament','gTournamentNo'].forEach(id=>$(id).onchange=()=>{updateGameRule(false);refreshGameConditionalFields()});$('gSystem').onchange=()=>{updateCrewNoteTemplate(false);updateGameRule(false);refreshGameConditionalFields()};
 $('gActual').addEventListener('input',()=>{$('gActual').dataset.manual='1'});
-$('gCancelled').addEventListener('change',()=>{refreshGameConditionalFields();updateGameRule(false)});['gCancelTravel','gCancelMode','gCancelAmount'].forEach(id=>$(id).addEventListener('change',()=>updateGameRule(false)));$('gExtraCosts').addEventListener('change',refreshGameConditionalFields);
+$('gCancelled').addEventListener('change',()=>{refreshGameConditionalFields();updateGameRule(false)});['gCancelTravel','gCancelMode','gCancelAmount'].forEach(id=>$(id).addEventListener('change',()=>updateGameRule(false)));$('gExtraCosts').addEventListener('change',refreshGameConditionalFields);$('gNeedsReview').addEventListener('change',()=>{$('gNeedsReview').dataset.touched='1'});
 $('resetAmount').onclick=()=>updateGameRule(true);$('closeGame').onclick=()=>$('gameDlg').close();$('addGame').onclick=()=>openGame();
 $('gHall').onchange=()=>{const h=state.halls.find(x=>x.id===Number($('gHall').value));if(h&&Number(h.km)>0)$('gKm').value=(Number(h.km)*2).toFixed(1)};
 $('gameForm').onsubmit=async e=>{
  e.preventDefault();
  const g=gameDraft();
+ if(g.source==='easyRef'){
+   const old=state.games.find(x=>x.id===g.id);
+   // A deliberate checkbox change can retain/clear a separate unresolved import conflict.
+   // Otherwise, a legacy checked flag is automatically cleared once fields are complete.
+   g.reviewConflict=$('gNeedsReview').dataset.touched==='1'
+     ? ($('gNeedsReview').checked&&!importRequiredMissing(g))
+     : !!old?.reviewConflict;
+   syncImportReview(g);
+ }
  if(!g.date||!g.home||!g.away||!g.league)return;if(!g.role||!g.system){alert('Bitte Funktion und System auswählen.');return;}
  const i=state.games.findIndex(x=>x.id===g.id);
  if(i>=0){
@@ -1881,7 +1911,7 @@ setTimeout(async()=>{await cloudStartupSync();if(state.personal.easyUrl&&state.p
 <script>
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=6.4.9', {updateViaCache:'none'}).then(reg => reg.update()).catch(err => console.warn('Service Worker:', err));
+    navigator.serviceWorker.register('./sw.js?v=6.4.10', {updateViaCache:'none'}).then(reg => reg.update()).catch(err => console.warn('Service Worker:', err));
   });
 }
 window.addEventListener('beforeinstallprompt', (event) => {
