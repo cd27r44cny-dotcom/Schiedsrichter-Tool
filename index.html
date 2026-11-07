@@ -254,11 +254,29 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
 #games .game-card-actions>.btn.review-action{background:#7c3aed;color:#fff;border-color:#7c3aed}
 @media(max-width:650px){#games .games-table th:nth-child(4),#games .games-table td:nth-child(4){min-width:180px}#games .games-table tbody td:nth-child(4) strong{min-width:160px}}
 </style>
-</head>
+<style id="settings-v728">
+.settings-layout{display:grid;grid-template-columns:minmax(220px,285px) minmax(0,1fr);gap:16px;align-items:start}
+.settings-sidebar{display:grid;gap:6px;position:sticky;top:12px;background:var(--card,#fff);border:1px solid var(--line,#e2e8f0);border-radius:17px;padding:10px}
+.settings-tab{width:100%;display:flex;align-items:center;text-align:left;gap:11px;padding:12px;border:1px solid transparent;border-radius:12px;background:transparent;color:inherit;cursor:pointer;font:inherit}
+.settings-tab:hover,.settings-tab:focus-visible{background:rgba(85,115,165,.09)}
+.settings-tab.active{background:rgba(37,99,235,.1);border-color:rgba(37,99,235,.25)}
+.settings-tab-icon{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:10px;background:rgba(37,99,235,.09);color:#2563eb;font-size:21px;font-weight:700}
+.settings-tab[data-settings-tab="backup"] .settings-tab-icon{color:#0d9488;background:rgba(13,148,136,.1)}
+.settings-tab[data-settings-tab="rides"] .settings-tab-icon{color:#ea580c;background:rgba(234,88,12,.1)}
+.settings-tab[data-settings-tab="time"] .settings-tab-icon{color:#8b5cf6;background:rgba(139,92,246,.1)}
+.settings-tab[data-settings-tab="fees"] .settings-tab-icon{color:#16a34a;background:rgba(22,163,74,.1)}
+.settings-tab strong{display:block;font-size:13px;line-height:1.3}.settings-tab small{display:block;font-size:11px;color:var(--muted,#64748b);margin-top:3px}
+.settings-tax-link{padding:12px;color:inherit;text-decoration:none;font-weight:650;font-size:13px;border-top:1px solid var(--line,#e2e8f0)}
+.settings-main{min-width:0}.settings-panel[hidden]{display:none!important}.settings-panel-head{margin:4px 0 14px}.settings-panel-head h3{font-size:22px;letter-spacing:-.03em;margin:0 0 4px}.settings-panel-head p{color:var(--muted,#64748b);margin:0;font-size:13px}
+.settings-subcard{margin:0 0 12px!important;min-width:0}.settings-quick-status{display:flex;align-items:center;gap:9px;padding:12px 14px;margin-bottom:12px;border:1px solid rgba(22,163,74,.2);border-radius:12px;background:rgba(22,163,74,.06);font-size:13px}
+.settings-status-dot{width:9px;height:9px;border-radius:50%;background:#16a34a;flex:none}
+.settings-advanced{margin:12px 0;border:1px solid var(--line,#e2e8f0);border-radius:12px;padding:12px}.settings-advanced summary{cursor:pointer;font-weight:650}.settings-advanced .formgrid{margin-top:14px!important}
+@media(max-width:760px){.settings-layout{grid-template-columns:1fr}.settings-sidebar{position:static;display:flex;overflow-x:auto;gap:6px}.settings-tab{flex:0 0 auto;width:auto;min-width:130px;padding:9px}.settings-tab small{display:none}.settings-tax-link{flex:0 0 auto;border:0;white-space:nowrap}.settings-panel-head h3{font-size:20px}}
+</style></head>
 <body>
 <div class="wrap">
   <h1 style="margin:0 0 4px">Schiedsrichter-Verwaltung</h1>
-  <div class="muted" style="margin-bottom:14px">Version 7.2.7 PWA · Neues App-Icon</div>
+  <div class="muted" style="margin-bottom:14px">Version 7.2.8 PWA · Neues App-Icon</div>
 
   <div class="top">
     <a class="btn navlink nav-dashboard" href="#dashboard"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7"/><path d="M5 9v12h14V9"/><path d="M9 21v-7h6v7"/></svg><span>Start</span></a>
@@ -410,141 +428,118 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
     </div>
   </section>
 
-  <section id="settings" class="view">
-    <div class="card" style="margin-bottom:14px"><div class="sectiontitle">Weitere Bereiche</div><a class="btn navlink" href="#tax">Steuer &amp; CSV-Export</a><p class="muted" style="margin-bottom:0">Jahreswerte und interne Berechnungshilfen.</p></div>
-    <div class="pageheading"><div><h2>Einstellungen</h2><p>Darstellung, Datensicherung, Synchronisierung und Gebühren.</p></div></div>
-    <div class="card">
-      <div class="sectiontitle">Darstellung</div>
-      <div class="formgrid"><label class="field">Farbschema<select id="appearanceMode"><option value="auto">Automatisch (Geräteeinstellung)</option><option value="light">Immer hell</option><option value="dark">Immer dunkel</option></select></label></div>
-      <div class="muted" style="margin-top:10px">Automatisch folgt dem Hell-/Dunkelmodus deines iPads oder iPhones und wechselt mit dessen Systemeinstellung.</div>
-    </div>
-    <div class="card" style="margin-top:12px">
-      <div class="sectiontitle">Datenspeicherung</div>
-      <div id="storageStatus" class="muted">Speicherstatus wird geprüft …</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-        <button type="button" class="btn" id="exportBackup">Backup herunterladen</button>
-        <label class="btn" style="display:inline-flex;align-items:center;cursor:pointer">Backup importieren<input id="importBackup" type="file" accept=".json,application/json" style="display:none"></label>
-      </div>
-    </div>
+<section id="settings" class="view"><div class="pageheading"><div><h2>Mehr & Einstellungen</h2><p>Alles an einem Ort – ohne lange Scrollseite.</p></div></div><div class="settings-layout"><nav class="settings-sidebar" aria-label="Einstellungsbereiche" role="tablist"><button type="button" class="settings-tab active" data-settings-tab="cloud" aria-controls="settings-panel-cloud" aria-selected="true" role="tab"><span class="settings-tab-icon">☁</span><span><strong>Cloud &amp; Synchronisierung</strong><small>Verbindungsstatus und Supabase</small></span></button><button type="button" class="settings-tab" data-settings-tab="backup" aria-controls="settings-panel-backup" aria-selected="false" role="tab"><span class="settings-tab-icon">▣</span><span><strong>Datensicherung</strong><small>JSON-Backup und Wiederherstellung</small></span></button><button type="button" class="settings-tab" data-settings-tab="rides" aria-controls="settings-panel-rides" aria-selected="false" role="tab"><span class="settings-tab-icon">↗</span><span><strong>Fahrten &amp; Routen</strong><small>Startadresse, Hallen und Tagesrouten</small></span></button><button type="button" class="settings-tab" data-settings-tab="time" aria-controls="settings-panel-time" aria-selected="false" role="tab"><span class="settings-tab-icon">◷</span><span><strong>Zeitautomatik</strong><small>Vor- und Nachbereitung</small></span></button><button type="button" class="settings-tab" data-settings-tab="fees" aria-controls="settings-panel-fees" aria-selected="false" role="tab"><span class="settings-tab-icon">€</span><span><strong>Gebührentabellen</strong><small>DEB, BEV und Saisongebühren</small></span></button><button type="button" class="settings-tab" data-settings-tab="display" aria-controls="settings-panel-display" aria-selected="false" role="tab"><span class="settings-tab-icon">◐</span><span><strong>Darstellung</strong><small>Hell, Dunkel oder automatisch</small></span></button><button type="button" class="settings-tab" data-settings-tab="personal" aria-controls="settings-panel-personal" aria-selected="false" role="tab"><span class="settings-tab-icon">♙</span><span><strong>Persönliche Daten</strong><small>Rechnungsdaten und Steuereinstellungen</small></span></button><button type="button" class="settings-tab" data-settings-tab="import" aria-controls="settings-panel-import" aria-selected="false" role="tab"><span class="settings-tab-icon">⇩</span><span><strong>easyRef-Import</strong><small>Kalender und Mannschaftsnamen</small></span></button><a class="settings-tax-link" href="#tax">▤ &nbsp; Steuer & CSV-Export</a></nav><div class="settings-main"><div class="settings-panel" id="settings-panel-cloud" role="tabpanel" ><div class="settings-panel-head"><h3>Cloud &amp; Synchronisierung</h3><p>Verbindungsstatus und Supabase</p></div><div class="settings-quick-status"><span class="settings-status-dot"></span><span id="settingsSyncSummary">Verbindungsstatus wird angezeigt …</span></div><div class="card settings-subcard">
+<div class="sectiontitle">Cloud-Synchronisierung</div>
+<div class="muted">Damit Website und installierte App denselben Datenstand verwenden, kannst du beide mit demselben Supabase-Konto anmelden. Deine Spiele, Hallen, Gebühren und Einstellungen werden dann automatisch synchronisiert. Passwort und Sitzung werden nicht in den Schiedsrichterdaten gespeichert.</div>
 
-    <div class="card" style="margin-top:12px">
-      <div class="sectiontitle">Cloud-Synchronisierung</div>
-      <div class="muted">Damit Website und installierte App denselben Datenstand verwenden, kannst du beide mit demselben Supabase-Konto anmelden. Deine Spiele, Hallen, Gebühren und Einstellungen werden dann automatisch synchronisiert. Passwort und Sitzung werden nicht in den Schiedsrichterdaten gespeichert.</div>
-      <div class="formgrid" style="margin-top:12px">
-        <label class="field">Supabase Projekt-URL<input id="syncProjectUrl" placeholder="https://xxxx.supabase.co"></label>
-        <label class="field">Supabase Anon/Public Key<input id="syncAnonKey" type="password" placeholder="eyJ..."></label>
-        <label class="field">E-Mail<input id="syncEmail" type="email" autocomplete="username"></label>
-        <label class="field">Passwort<input id="syncPassword" type="password" autocomplete="current-password"></label>
-        <label class="checkbox"><input id="syncAuto" type="checkbox" checked> Änderungen automatisch synchronisieren</label>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-        <button type="button" class="btn" id="syncSaveConfig">Zugangsdaten speichern</button>
-        <button type="button" class="btn" id="syncSignup">Konto erstellen</button>
-        <button type="button" class="btn primary" id="syncLogin">Anmelden & synchronisieren</button>
-        <button type="button" class="btn" id="syncNow">Jetzt synchronisieren</button>
-        <button type="button" class="btn" id="syncLogout">Abmelden</button>
-      </div>
-      <div id="cloudSyncStatus" class="muted" style="margin-top:10px">Cloud-Sync ist noch nicht eingerichtet. Die App funktioniert weiterhin vollständig lokal.</div>
-    </div>
-
-    <div class="card" style="margin-top:12px">
-      <div class="sectiontitle">Zeitautomatik</div>
-      <div class="muted">Aus Spielbeginn, Liga und Fahrzeit kann das Tool Abfahrt und Rückkehr vorschlagen. Die Vorlaufzeit wird automatisch nach Nachwuchs, DNL und Senioren gewählt. Standard-Spieldauer: 135 Min. Die Nachbereitungszeit kann je Kategorie getrennt eingestellt werden.</div>
-      <div class="formgrid" style="margin-top:12px">
-        <label class="field">Nachwuchs – vor Spielbeginn (Min.)<input id="pPrepYouth" type="number" min="0" value="60"></label>
-        <label class="field">DNL – vor Spielbeginn (Min.)<input id="pPrepDnl" type="number" min="0" value="75"></label>
-        <label class="field">Senioren – vor Spielbeginn (Min.)<input id="pPrepSenior" type="number" min="0" value="90"></label>
-        <label class="field">Standard-Spielzeit (Min.)<input id="pGameMin" type="number" min="0" value="135"></label>
-        <label class="field">Nachwuchs – nach Spielende (Min.)<input id="pPostYouth" type="number" min="0" value="45"></label>
-        <label class="field">DNL – nach Spielende (Min.)<input id="pPostDnl" type="number" min="0" value="45"></label>
-        <label class="field">Senioren – nach Spielende (Min.)<input id="pPostSenior" type="number" min="0" value="60"></label>
-      </div>
-      <div class="notice" style="margin-top:10px">Automatische Zuordnung: DEB U20/DNL → DNL (75 Min.), U17/U15 sowie BEV-Nachwuchs → Nachwuchs (60 Min.), Senioren-/Frauenligen → Senioren (90 Min.).</div>
-      <button type="button" class="btn primary" id="saveTimeSettings" style="margin-top:12px">Zeitregeln speichern</button>
-    </div>
-
-    <div class="card" style="margin-top:12px">
-      <div class="sectiontitle">Persönliche Daten</div>
-      <div class="formgrid">
-        <label class="field">Vorname, Name<input id="pName"></label>
-        <label class="field">Straße<input id="pStreet"></label>
-        <label class="field">PLZ / Ort<input id="pCity"></label>
-        <label class="field">Startadresse für Fahrten<input id="pStart"></label>
-        <label class="field">IBAN<input id="pIban"></label>
-        <label class="field">BIC<input id="pBic"></label>
-        <label class="checkbox"><input type="checkbox" id="pVatEnabled"> Umsatzsteuerpflichtig</label>
-        <label class="field">Umsatzsteuer %<input id="pVatRate" type="number" min="0" step="0.1" value="19"></label>
-      </div>
-      <button type="button" class="btn primary" id="savePersonal" style="margin-top:12px">Speichern</button>
-    </div>
-
-    <div class="card" style="margin-top:12px">
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><div class="sectiontitle">Eishallen & Fahrtdaten</div><button type="button" class="btn" id="addHall">+ Halle</button></div>
-      <div style="margin:10px 0"><button type="button" class="btn" id="cleanupImportedHalls">Doppelte Import-Hallen prüfen und bereinigen</button><div id="hallCleanupStatus" class="muted" style="margin-top:6px"></div><div id="hallCleanupReview" style="margin-top:10px"></div></div>
-      <div class="tablewrap"><table><thead><tr><th>Halle</th><th>Adresse</th><th class="right">km einfach</th><th class="right">Fahrzeit einfach</th><th></th></tr></thead><tbody id="hallsBody"></tbody></table></div>
-    </div>
-
-    <div class="card" style="margin-top:12px">
-      <div class="sectiontitle">Automatische Kilometerberechnung</div>
-      <div class="muted">Das Tool berechnet beim Speichern einer Halle bzw. eines Spiels automatisch Fahrstrecke und Fahrzeit aus deiner Heimadresse. Bei mehreren Spielen am selben Tag wird automatisch die komplette Tagesroute in zeitlicher Reihenfolge gerechnet: Zuhause → Halle 1 → Halle 2 → Halle 3 → … → Zuhause.</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-        <button type="button" class="btn primary" id="autoGeocodeHalls">Hallenadressen prüfen</button>
-        <button type="button" class="btn" id="resetGeoCache">Koordinaten neu ermitteln</button>
-        <button type="button" class="btn" id="autoRouteVisible">Sichtbare Tagesrouten automatisch berechnen</button>
-      </div>
-      <div id="routeServiceStatus" class="muted" style="margin-top:10px">Online-Routenberechnung nutzt öffentliche Geocoding-/Routing-Dienste. Pro Kalendertag werden alle Spiele chronologisch zu einer einzigen Route verbunden – unabhängig davon, ob es 1, 2, 3 oder noch mehr Spiele sind. Falls der Browser dies blockiert, bleiben die manuellen km-/Fahrzeit-Felder verfügbar.</div>
-    </div>
-
-    <div class="card" style="margin-top:12px">
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-        <div><div class="sectiontitle">Strecken zwischen Hallen</div><div class="muted">Diese Strecken werden bei mehreren Spielen am selben Tag automatisch per Straßenrouting berechnet und gespeichert. Manuelle Einträge/Korrekturen sind weiterhin möglich; die Strecke gilt in beide Richtungen.</div></div>
-        <button type="button" class="btn" id="addRoute">+ Strecke</button>
-      </div>
-      <div class="tablewrap" style="margin-top:10px"><table>
-        <thead><tr><th>Von</th><th>Nach</th><th class="right">km</th><th class="right">Fahrzeit</th><th></th></tr></thead>
-        <tbody id="routesBody"></tbody>
-      </table></div>
-    </div>
-
-    <div class="card" style="margin-top:12px">
-      <div class="sectiontitle">DEB / easyRef Import</div>
-      <div class="muted">Deine persönliche Kalender-URL wird ausschließlich lokal in diesem Browser gespeichert. Bitte teile sie nicht im Chat.</div>
-      <div class="formgrid" style="margin-top:12px">
-        <label class="field">Persönliche easyRef-Kalender-URL<input id="easyUrl" type="password" placeholder="https://easyref.gamepitch.net/data/api/..."></label>
-        <label class="field">ICS-Datei importieren<input id="icsFile" type="file" accept=".ics,text/calendar"></label>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-        <button class="btn" id="saveEasyUrl">URL lokal speichern</button>
-        <button class="btn primary" id="syncEasyRef">easyRef synchronisieren</button>
-      </div>
-      <label style="display:flex;align-items:center;gap:8px;margin-top:12px"><input id="easyAutoSync" type="checkbox" checked> Beim Öffnen automatisch synchronisieren</label>
-      <div id="easyStatus" class="muted" style="margin-top:10px"></div>
-      <div style="margin-top:16px;border-top:1px solid var(--line,#ddd);padding-top:12px">
-        <strong>Gelernte Mannschaftsnamen</strong>
-        <div class="muted">Korrigiere einen Namen bei einem importierten Spiel und speichere es. Die Zuordnung wird für künftige Importe gemerkt. Hier kannst du fehlerhafte Zuordnungen wieder entfernen.</div>
-        <div id="teamAliasList" style="margin-top:8px"></div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-top:12px">
-      <div class="sectiontitle">Systemprüfung</div>
-      <div class="muted">Prüft Datenstruktur, Gebühren und wichtige Bedienelemente.</div>
-      <button type="button" class="btn primary" id="runSelfCheck" style="margin-top:10px">System jetzt prüfen</button>
-      <div id="selfCheckResult" style="margin-top:10px"></div>
-    </div>
-
-    <div class="card" style="margin-top:12px">
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><div><div class="sectiontitle">Gebühren</div>
-      <div class="notice" style="margin:10px 0">
+<details class="settings-advanced"><summary>Verbindung &amp; Zugangsdaten</summary><div class="formgrid" style="margin-top:12px">
+<label class="field">Supabase Projekt-URL<input id="syncProjectUrl" placeholder="https://xxxx.supabase.co"/></label>
+<label class="field">Supabase Anon/Public Key<input id="syncAnonKey" placeholder="eyJ..." type="password"/></label>
+<label class="field">E-Mail<input autocomplete="username" id="syncEmail" type="email"/></label>
+<label class="field">Passwort<input autocomplete="current-password" id="syncPassword" type="password"/></label>
+<label class="checkbox"><input checked="" id="syncAuto" type="checkbox"/> Änderungen automatisch synchronisieren</label>
+</div></details><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+<button class="btn" id="syncSaveConfig" type="button">Zugangsdaten speichern</button>
+<button class="btn" id="syncSignup" type="button">Konto erstellen</button>
+<button class="btn primary" id="syncLogin" type="button">Anmelden &amp; synchronisieren</button>
+<button class="btn" id="syncNow" type="button">Jetzt synchronisieren</button>
+<button class="btn" id="syncLogout" type="button">Abmelden</button>
+</div>
+<div class="muted" id="cloudSyncStatus" style="margin-top:10px">Cloud-Sync ist noch nicht eingerichtet. Die App funktioniert weiterhin vollständig lokal.</div>
+</div></div><div class="settings-panel" id="settings-panel-backup" role="tabpanel" hidden><div class="settings-panel-head"><h3>Datensicherung</h3><p>JSON-Backup und Wiederherstellung</p></div><div class="card settings-subcard">
+<div class="sectiontitle">Datenspeicherung</div>
+<div class="muted" id="storageStatus">Speicherstatus wird geprüft …</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+<button class="btn" id="exportBackup" type="button">Backup herunterladen</button>
+<label class="btn" style="display:inline-flex;align-items:center;cursor:pointer">Backup importieren<input accept=".json,application/json" id="importBackup" style="display:none" type="file"/></label>
+</div>
+</div></div><div class="settings-panel" id="settings-panel-rides" role="tabpanel" hidden><div class="settings-panel-head"><h3>Fahrten &amp; Routen</h3><p>Startadresse, Hallen und Tagesrouten</p></div><div class="card settings-subcard"><div class="sectiontitle">Startadresse</div><div class="formgrid"><label class="field">Startadresse für Fahrten<input id="pStart"/></label></div><div class="muted" style="margin-top:8px">Die Startadresse wird zusammen mit deinen persönlichen Daten gespeichert.</div><button type="button" class="btn primary" id="saveRideStart" style="margin-top:10px">Startadresse speichern</button></div><div class="card settings-subcard">
+<div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><div class="sectiontitle">Eishallen &amp; Fahrtdaten</div><button class="btn" id="addHall" type="button">+ Halle</button></div>
+<div style="margin:10px 0"><button class="btn" id="cleanupImportedHalls" type="button">Doppelte Import-Hallen prüfen und bereinigen</button><div class="muted" id="hallCleanupStatus" style="margin-top:6px"></div><div id="hallCleanupReview" style="margin-top:10px"></div></div>
+<div class="tablewrap"><table><thead><tr><th>Halle</th><th>Adresse</th><th class="right">km einfach</th><th class="right">Fahrzeit einfach</th><th></th></tr></thead><tbody id="hallsBody"></tbody></table></div>
+</div><div class="card settings-subcard">
+<div class="sectiontitle">Automatische Kilometerberechnung</div>
+<div class="muted">Das Tool berechnet beim Speichern einer Halle bzw. eines Spiels automatisch Fahrstrecke und Fahrzeit aus deiner Heimadresse. Bei mehreren Spielen am selben Tag wird automatisch die komplette Tagesroute in zeitlicher Reihenfolge gerechnet: Zuhause → Halle 1 → Halle 2 → Halle 3 → … → Zuhause.</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+<button class="btn primary" id="autoGeocodeHalls" type="button">Hallenadressen prüfen</button>
+<button class="btn" id="resetGeoCache" type="button">Koordinaten neu ermitteln</button>
+<button class="btn" id="autoRouteVisible" type="button">Sichtbare Tagesrouten automatisch berechnen</button>
+</div>
+<div class="muted" id="routeServiceStatus" style="margin-top:10px">Online-Routenberechnung nutzt öffentliche Geocoding-/Routing-Dienste. Pro Kalendertag werden alle Spiele chronologisch zu einer einzigen Route verbunden – unabhängig davon, ob es 1, 2, 3 oder noch mehr Spiele sind. Falls der Browser dies blockiert, bleiben die manuellen km-/Fahrzeit-Felder verfügbar.</div>
+</div><div class="card settings-subcard">
+<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+<div><div class="sectiontitle">Strecken zwischen Hallen</div><div class="muted">Diese Strecken werden bei mehreren Spielen am selben Tag automatisch per Straßenrouting berechnet und gespeichert. Manuelle Einträge/Korrekturen sind weiterhin möglich; die Strecke gilt in beide Richtungen.</div></div>
+<button class="btn" id="addRoute" type="button">+ Strecke</button>
+</div>
+<div class="tablewrap" style="margin-top:10px"><table>
+<thead><tr><th>Von</th><th>Nach</th><th class="right">km</th><th class="right">Fahrzeit</th><th></th></tr></thead>
+<tbody id="routesBody"></tbody>
+</table></div>
+</div></div><div class="settings-panel" id="settings-panel-time" role="tabpanel" hidden><div class="settings-panel-head"><h3>Zeitautomatik</h3><p>Vor- und Nachbereitung</p></div><div class="card settings-subcard">
+<div class="sectiontitle">Zeitautomatik</div>
+<div class="muted">Aus Spielbeginn, Liga und Fahrzeit kann das Tool Abfahrt und Rückkehr vorschlagen. Die Vorlaufzeit wird automatisch nach Nachwuchs, DNL und Senioren gewählt. Standard-Spieldauer: 135 Min. Die Nachbereitungszeit kann je Kategorie getrennt eingestellt werden.</div>
+<div class="formgrid" style="margin-top:12px">
+<label class="field">Nachwuchs – vor Spielbeginn (Min.)<input id="pPrepYouth" min="0" type="number" value="60"/></label>
+<label class="field">DNL – vor Spielbeginn (Min.)<input id="pPrepDnl" min="0" type="number" value="75"/></label>
+<label class="field">Senioren – vor Spielbeginn (Min.)<input id="pPrepSenior" min="0" type="number" value="90"/></label>
+<label class="field">Standard-Spielzeit (Min.)<input id="pGameMin" min="0" type="number" value="135"/></label>
+<label class="field">Nachwuchs – nach Spielende (Min.)<input id="pPostYouth" min="0" type="number" value="45"/></label>
+<label class="field">DNL – nach Spielende (Min.)<input id="pPostDnl" min="0" type="number" value="45"/></label>
+<label class="field">Senioren – nach Spielende (Min.)<input id="pPostSenior" min="0" type="number" value="60"/></label>
+</div>
+<div class="notice" style="margin-top:10px">Automatische Zuordnung: DEB U20/DNL → DNL (75 Min.), U17/U15 sowie BEV-Nachwuchs → Nachwuchs (60 Min.), Senioren-/Frauenligen → Senioren (90 Min.).</div>
+<button class="btn primary" id="saveTimeSettings" style="margin-top:12px" type="button">Zeitregeln speichern</button>
+</div></div><div class="settings-panel" id="settings-panel-fees" role="tabpanel" hidden><div class="settings-panel-head"><h3>Gebührentabellen</h3><p>DEB, BEV und Saisongebühren</p></div><div class="card settings-subcard">
+<div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><div><div class="sectiontitle">Gebühren</div>
+<div class="notice" style="margin:10px 0">
         Alle Gebühren bleiben frei bearbeitbar und löschbar. Hinterlegt: DEB 2026/27, BEV 2026/27 sowie BEV 2025/26. Für DEB 2025/26 ist die besprochene U17-2-Mann-Gebühr von 115 € enthalten.
         BEV-Spiele vor 09:00 Uhr bzw. ab 20:30 Uhr erhalten automatisch +25 %, außer bei als Turnier markierten Spielen.
       </div>
-      <button type="button" class="btn" id="mergeDefaultFees">Fehlende Standardgebühren ergänzen</button>
-<div class="muted">Neueste Saison zuerst; pro Saison zuerst DEB, danach BEV.</div></div><button type="button" class="btn" id="addFee">+ Gebühr</button></div>
-      <div id="feeGroups"></div>
-    </div>
-  </section>
-  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 7.2.7 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
+<button class="btn" id="mergeDefaultFees" type="button">Fehlende Standardgebühren ergänzen</button>
+<div class="muted">Neueste Saison zuerst; pro Saison zuerst DEB, danach BEV.</div></div><button class="btn" id="addFee" type="button">+ Gebühr</button></div>
+<div id="feeGroups"></div>
+</div></div><div class="settings-panel" id="settings-panel-display" role="tabpanel" hidden><div class="settings-panel-head"><h3>Darstellung</h3><p>Hell, Dunkel oder automatisch</p></div><div class="card settings-subcard">
+<div class="sectiontitle">Darstellung</div>
+<div class="formgrid"><label class="field">Farbschema<select id="appearanceMode"><option value="auto">Automatisch (Geräteeinstellung)</option><option value="light">Immer hell</option><option value="dark">Immer dunkel</option></select></label></div>
+<div class="muted" style="margin-top:10px">Automatisch folgt dem Hell-/Dunkelmodus deines iPads oder iPhones und wechselt mit dessen Systemeinstellung.</div>
+</div><div class="card settings-subcard">
+<div class="sectiontitle">Systemprüfung</div>
+<div class="muted">Prüft Datenstruktur, Gebühren und wichtige Bedienelemente.</div>
+<button class="btn primary" id="runSelfCheck" style="margin-top:10px" type="button">System jetzt prüfen</button>
+<div id="selfCheckResult" style="margin-top:10px"></div>
+</div></div><div class="settings-panel" id="settings-panel-personal" role="tabpanel" hidden><div class="settings-panel-head"><h3>Persönliche Daten</h3><p>Rechnungsdaten und Steuereinstellungen</p></div><div class="card settings-subcard">
+<div class="sectiontitle">Persönliche Daten</div>
+<div class="formgrid">
+<label class="field">Vorname, Name<input id="pName"/></label>
+<label class="field">Straße<input id="pStreet"/></label>
+<label class="field">PLZ / Ort<input id="pCity"/></label>
+
+<label class="field">IBAN<input id="pIban"/></label>
+<label class="field">BIC<input id="pBic"/></label>
+<label class="checkbox"><input id="pVatEnabled" type="checkbox"/> Umsatzsteuerpflichtig</label>
+<label class="field">Umsatzsteuer %<input id="pVatRate" min="0" step="0.1" type="number" value="19"/></label>
+</div>
+<button class="btn primary" id="savePersonal" style="margin-top:12px" type="button">Speichern</button>
+</div></div><div class="settings-panel" id="settings-panel-import" role="tabpanel" hidden><div class="settings-panel-head"><h3>easyRef-Import</h3><p>Kalender und Mannschaftsnamen</p></div><div class="card settings-subcard">
+<div class="sectiontitle">DEB / easyRef Import</div>
+<div class="muted">Deine persönliche Kalender-URL wird ausschließlich lokal in diesem Browser gespeichert. Bitte teile sie nicht im Chat.</div>
+<div class="formgrid" style="margin-top:12px">
+<label class="field">Persönliche easyRef-Kalender-URL<input id="easyUrl" placeholder="https://easyref.gamepitch.net/data/api/..." type="password"/></label>
+<label class="field">ICS-Datei importieren<input accept=".ics,text/calendar" id="icsFile" type="file"/></label>
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+<button class="btn" id="saveEasyUrl">URL lokal speichern</button>
+<button class="btn primary" id="syncEasyRef">easyRef synchronisieren</button>
+</div>
+<label style="display:flex;align-items:center;gap:8px;margin-top:12px"><input checked="" id="easyAutoSync" type="checkbox"/> Beim Öffnen automatisch synchronisieren</label>
+<div class="muted" id="easyStatus" style="margin-top:10px"></div>
+<div style="margin-top:16px;border-top:1px solid var(--line,#ddd);padding-top:12px">
+<strong>Gelernte Mannschaftsnamen</strong>
+<div class="muted">Korrigiere einen Namen bei einem importierten Spiel und speichere es. Die Zuordnung wird für künftige Importe gemerkt. Hier kannst du fehlerhafte Zuordnungen wieder entfernen.</div>
+<div id="teamAliasList" style="margin-top:8px"></div>
+</div>
+</div></div></div></div></section>
+  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 7.2.8 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
 </div>
 
 <dialog id="gameDlg"><form method="dialog" id="gameForm" class="modal">
@@ -2326,5 +2321,22 @@ window.installPWA = async function(){
 };
 </script>
 
-</body>
+<script id="settings-v728-script">
+(function(){
+ function showSettingsPanel(key){
+  document.querySelectorAll('[data-settings-tab]').forEach(btn=>{const selected=btn.dataset.settingsTab===key;btn.classList.toggle('active',selected);btn.setAttribute('aria-selected',String(selected))});
+  document.querySelectorAll('.settings-panel').forEach(panel=>{panel.hidden=panel.id!=='settings-panel-'+key});
+  try{sessionStorage.setItem('sr-settings-panel',key)}catch(e){}
+ }
+ document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('[data-settings-tab]').forEach(btn=>btn.addEventListener('click',()=>showSettingsPanel(btn.dataset.settingsTab)));
+  let selected='cloud';try{selected=sessionStorage.getItem('sr-settings-panel')||selected}catch(e){}
+  if(!document.getElementById('settings-panel-'+selected))selected='cloud';showSettingsPanel(selected);
+  const saveRide=document.getElementById('saveRideStart'),savePersonal=document.getElementById('savePersonal');
+  if(saveRide&&savePersonal)saveRide.addEventListener('click',()=>savePersonal.click());
+  const syncStatus=document.getElementById('cloudSyncStatus'),summary=document.getElementById('settingsSyncSummary');
+  if(syncStatus&&summary){const update=()=>{summary.textContent=syncStatus.textContent||'Cloud-Status unbekannt'};update();new MutationObserver(update).observe(syncStatus,{childList:true,subtree:true,characterData:true})}
+ });
+})();
+</script></body>
 </html>
