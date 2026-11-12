@@ -309,7 +309,7 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
 <body>
 <div class="wrap">
   <h1 style="margin:0 0 4px">Schiedsrichter-Verwaltung</h1>
-  <div class="muted" style="margin-bottom:14px">Version 7.4.2 PWA · Anfahrt zum nächsten Spiel</div>
+  <div class="muted" style="margin-bottom:14px">Version 7.4.3 PWA · easyRef-Status</div>
 
   <div class="top">
     <a class="btn navlink nav-dashboard" href="#dashboard"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7"/><path d="M5 9v12h14V9"/><path d="M9 21v-7h6v7"/></svg><span>Start</span></a>
@@ -577,7 +577,8 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
 <button class="btn primary" id="syncEasyRef">easyRef synchronisieren</button>
 </div>
 <label style="display:flex;align-items:center;gap:8px;margin-top:12px"><input checked="" id="easyAutoSync" type="checkbox"/> Beim Öffnen automatisch synchronisieren</label>
-<div class="muted" id="easyStatus" style="margin-top:10px"></div>
+<div class="muted" id="easyStatus" style="margin-top:10px" aria-live="polite"></div>
+<div class="muted" id="easyLastSuccess" style="margin-top:6px" aria-live="polite"></div>
 <div style="margin-top:16px;border-top:1px solid var(--line,#ddd);padding-top:12px">
 <strong>Gelernte Mannschaftsnamen</strong>
 <div class="muted">Korrigiere einen Namen bei einem importierten Spiel und speichere es. Die Zuordnung wird für künftige Importe gemerkt. Hier kannst du fehlerhafte Zuordnungen wieder entfernen.</div>
@@ -1854,9 +1855,23 @@ function importEasyEvents(events){
  save();renderAll();renderHallCleanupReview();return{added,updated,skipped,review,relinked:cleanup.fixed};
 }
 $('cleanupImportedHalls').onclick=()=>{const result=reconcileImportedHalls();save();renderAll();renderHallCleanupReview();$('hallCleanupStatus').textContent=result.merged?`${result.merged} doppelte Halle(n) zusammengeführt; ${result.fixed} Spiele neu zugeordnet.`:'Keine eindeutig identischen Hallen automatisch zusammengeführt. Prüfe gegebenenfalls die Auswahl unten.'};
+// The last successful calendar import is device-local metadata, separate from referee data.
+const EASY_LAST_SUCCESS_KEY='sr_easyref_last_success_v1';
+function renderEasyLastSuccess(){
+ const el=$('easyLastSuccess');if(!el)return;
+ let info=null;try{info=JSON.parse(safeGet(EASY_LAST_SUCCESS_KEY)||'null')}catch(e){}
+ if(!info||!Number.isFinite(Number(info.time))){el.textContent='Noch kein erfolgreicher easyRef-Abgleich auf diesem Gerät erfasst.';return}
+ const when=new Date(Number(info.time)).toLocaleString('de-DE',{dateStyle:'medium',timeStyle:'short'});
+ el.textContent=`Letzter erfolgreicher ${info.kind==='ics'?'ICS-Import':'Kalenderabgleich'}: ${when} · ${Number(info.added)||0} neu, ${Number(info.updated)||0} aktualisiert, ${Number(info.skipped)||0} unverändert.`;
+}
+function recordEasyLastSuccess(kind,res){
+ safeSet(EASY_LAST_SUCCESS_KEY,JSON.stringify({kind,time:Date.now(),added:res.added,updated:res.updated,skipped:res.skipped}));
+ renderEasyLastSuccess();
+}
+renderEasyLastSuccess();
 $('saveEasyUrl').onclick=()=>{state.personal.easyUrl=$('easyUrl').value.trim();state.personal.easyAutoSync=$('easyAutoSync').checked;save();$('easyStatus').textContent='Kalender-URL und automatische Synchronisierung gespeichert.'}
 $('easyAutoSync').onchange=()=>{state.personal.easyAutoSync=$('easyAutoSync').checked;save()};
-$('icsFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;try{const raw=await f.text(),res=importEasyEvents(parseEasyRefICS(raw));$('easyStatus').textContent=`ICS importiert: ${res.added} neu, ${res.updated} aktualisiert, ${res.skipped} bereits vorhanden${res.relinked?`, ${res.relinked} Hallen zugeordnet`:''}${res.review?`, ${res.review} zu prüfen`:''}.`}catch(err){$('easyStatus').textContent='Die ICS-Datei konnte nicht verarbeitet werden.'}finally{e.target.value=''}};
+$('icsFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;try{const raw=await f.text(),events=parseEasyRefICS(raw);if(!events.length)throw new Error('Keine Kalendertermine lesbar');const res=importEasyEvents(events);recordEasyLastSuccess('ics',res);$('easyStatus').textContent=`ICS importiert: ${res.added} neu, ${res.updated} aktualisiert, ${res.skipped} bereits vorhanden${res.relinked?`, ${res.relinked} Hallen zugeordnet`:''}${res.review?`, ${res.review} zu prüfen`:''}.`}catch(err){$('easyStatus').textContent='Die ICS-Datei konnte nicht verarbeitet werden.'}finally{e.target.value=''}};
 let easyFetchPromise=null;
 async function synchronizeEasyRef(automatic=false){
  if(easyFetchPromise)return easyFetchPromise;
@@ -1871,6 +1886,7 @@ async function synchronizeEasyRef(automatic=false){
    const raw=await r.text();if(!raw.includes('BEGIN:VCALENDAR'))throw new Error('Keine gültige ICS-Antwort');
    const events=parseEasyRefICS(raw);if(!events.length)throw new Error('Keine Kalendertermine lesbar');
    const res=importEasyEvents(events);
+   recordEasyLastSuccess('calendar',res);
    status.textContent=`${automatic?'Automatischer Abgleich':'easyRef synchronisiert'}: ${res.added} neu, ${res.updated} aktualisiert, ${res.skipped} bereits vorhanden${res.relinked?`, ${res.relinked} Hallen zugeordnet`:''}${res.review?`, ${res.review} zu prüfen`:''}.`;
    return res;
   }catch(err){
