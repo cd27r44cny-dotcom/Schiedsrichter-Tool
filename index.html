@@ -297,11 +297,19 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
 .dash-tasks-layout{grid-template-columns:1fr;margin-bottom:14px}.dash-tasks-layout .dash-todo-card{min-height:0}
 @media(max-width:900px){.dash-next-layout{grid-template-columns:1fr}.dash-feature-facts{grid-template-columns:1fr 1fr}}
 @media(max-width:550px){.dash-feature-facts{grid-template-columns:1fr}.dash-feature-card{padding:16px!important}}
+
+.dash-travel-panel{margin-top:16px;padding:15px;border:1px solid var(--border);border-radius:12px;background:var(--tablehead)}
+.dash-travel-head{font-size:14px;font-weight:750;margin-bottom:10px}
+.dash-travel-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.dash-travel-value{font-size:19px;font-weight:750;margin-top:3px}
+.dash-travel-label{font-size:12px;color:var(--muted)}
+.dash-travel-note{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5}
+@media(max-width:550px){.dash-travel-grid{grid-template-columns:1fr 1fr}}
 </style></head>
 <body>
 <div class="wrap">
   <h1 style="margin:0 0 4px">Schiedsrichter-Verwaltung</h1>
-  <div class="muted" style="margin-bottom:14px">Version 7.4.1 PWA · Kompakte Spielübersicht</div>
+  <div class="muted" style="margin-bottom:14px">Version 7.4.2 PWA · Anfahrt zum nächsten Spiel</div>
 
   <div class="top">
     <a class="btn navlink nav-dashboard" href="#dashboard"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7"/><path d="M5 9v12h14V9"/><path d="M9 21v-7h6v7"/></svg><span>Start</span></a>
@@ -1368,6 +1376,25 @@ function renderDash(){
    [['📅',gameDate(g)],['🕒',(g.start||g.time||'Uhrzeit offen')+' Uhr'],['📍',gameHall(g)],['🏒',g.role||'Funktion noch offen']].forEach(([ico,value])=>{const e=document.createElement('div');e.className='dash-feature-fact';const ic=document.createElement('span');ic.textContent=ico;const t=document.createElement('span');t.textContent=value;e.append(ic,t);facts.append(e)});
    const actions=document.createElement('div');actions.className='dash-feature-actions';const btn=document.createElement('button');btn.className='btn primary';btn.type='button';btn.textContent=g.needsReview?'Jetzt prüfen':'Spiel öffnen';btn.onclick=()=>openDashGame(g);actions.append(btn);
    featured.append(league,teams,facts,actions);
+   // Nur hinterlegte Routenwerte verwenden: keine geschätzte Fahrzeit vortäuschen.
+   const hall=state.halls.find(h=>String(h.id)===String(g.hallId));
+   const travel=hall?Number(hall.minutes):NaN;
+   const distance=hall?Number(hall.km):NaN;
+   const hasTravel=Number.isFinite(travel)&&travel>0;
+   const start=toMinutes(g.start||g.time||'');
+   const prep=prepMinutesForGame(g);
+   const canDepart=hasTravel&&Number.isFinite(start)&&Number.isFinite(prep);
+   const travelPanel=document.createElement('div');travelPanel.className='dash-travel-panel';
+   const travelTitle=document.createElement('div');travelTitle.className='dash-travel-head';travelTitle.textContent='🚗 Anfahrt & Abfahrt';travelPanel.append(travelTitle);
+   const travelGrid=document.createElement('div');travelGrid.className='dash-travel-grid';
+   const addTravelFact=(label,value)=>{const cell=document.createElement('div');const lab=document.createElement('div');lab.className='dash-travel-label';lab.textContent=label;const val=document.createElement('div');val.className='dash-travel-value';val.textContent=value;cell.append(lab,val);travelGrid.append(cell)};
+   addTravelFact('Strecke (einfach)',Number.isFinite(distance)&&distance>0?km1(distance)+' km':'Noch nicht berechnet');
+   addTravelFact('Fahrzeit (einfach)',hasTravel?Math.round(travel)+' Min.':'Noch nicht berechnet');
+   addTravelFact('Vorbereitung',Number.isFinite(prep)?prep+' Min.':'Nicht hinterlegt');
+   addTravelFact('Empfohlene Abfahrt',canDepart?fromMinutes(start-prep-travel)+' Uhr':'Noch nicht berechenbar');
+   travelPanel.append(travelGrid);
+   const note=document.createElement('div');note.className='dash-travel-note';note.textContent=canDepart?'Berechnet aus Spielbeginn, Vorbereitungszeit und hinterlegter Fahrzeit. Ohne zusätzlichen Verkehrspuffer.':'Für die Abfahrtszeit muss eine Fahrzeit zur Halle hinterlegt sein.';travelPanel.append(note);
+   featured.append(travelPanel);
  }}
  if(nextBox){nextBox.replaceChildren();const next=nextAll.slice(1);if(!next.length){const p=document.createElement('p');p.className='muted';p.textContent=nextAll.length?'Keine weiteren Spiele geplant.':'Keine bevorstehenden Spiele.';nextBox.append(p)}
  next.forEach(g=>{const item=document.createElement('button');item.type='button';item.className='dash-list-item';item.onclick=()=>openDashGame(g);
