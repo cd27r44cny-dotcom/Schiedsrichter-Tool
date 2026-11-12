@@ -273,11 +273,35 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
 .settings-status-dot{width:9px;height:9px;border-radius:50%;background:#16a34a;flex:none}
 .settings-advanced{margin:12px 0;border:1px solid var(--line,#e2e8f0);border-radius:12px;padding:12px}.settings-advanced summary{cursor:pointer;font-weight:650}.settings-advanced .formgrid{margin-top:14px!important}
 @media(max-width:760px){.settings-layout{grid-template-columns:1fr}.settings-sidebar{position:static;display:flex;overflow-x:auto;gap:6px}.settings-tab{flex:0 0 auto;width:auto;min-width:130px;padding:9px}.settings-tab small{display:none}.settings-tax-link{flex:0 0 auto;border:0;white-space:nowrap}.settings-panel-head h3{font-size:20px}}
+</style><style id="v740-next-games">
+.dash-next-layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.9fr);gap:14px;margin:14px 0 20px;align-items:stretch}
+.dash-feature-card{border:1px solid var(--border);background:var(--card);padding:22px!important}
+.dash-feature-title{display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:15px;font-weight:700;margin-bottom:19px}
+.dash-feature-badge{font-size:12px;padding:6px 10px;border-radius:999px;background:var(--tablehead);color:var(--text)}
+.dash-feature-badge.review{background:#f3e8ff;color:#7e22ce}
+.dash-feature-teams{font-size:clamp(21px,2.3vw,29px);font-weight:750;line-height:1.25;margin:10px 0 16px;overflow-wrap:anywhere}
+.dash-feature-league{font-size:13px;font-weight:700;color:var(--accent)}
+.dash-feature-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0 18px}
+.dash-feature-fact{display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.4;min-width:0;overflow-wrap:anywhere}
+.dash-feature-actions{display:flex;gap:9px;flex-wrap:wrap}
+.dash-feature-actions button{cursor:pointer}
+.dash-upcoming-card{display:flex;flex-direction:column;gap:12px}
+.dash-upcoming-card .dash-list{display:grid;gap:8px;flex:1}
+.dash-upcoming-card .dash-list-item{display:flex;gap:11px;align-items:center;cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit}
+.dash-upcoming-card .dash-list-item:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dash-date-tile{flex:none;min-width:48px;padding:7px;border-radius:9px;background:var(--tablehead);text-align:center;font-size:12px}
+.dash-date-tile b{display:block;font-size:19px}
+.dash-game-copy{min-width:0;flex:1}.dash-game-copy strong{font-size:13px}.dash-game-copy small{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+.dash-review-dot{font-size:11px;font-weight:650;color:#7e22ce}
+.dash-section-label{font-weight:750;font-size:17px;margin:16px 0 10px}
+.dash-tasks-layout{grid-template-columns:1fr;margin-bottom:14px}.dash-tasks-layout .dash-todo-card{min-height:0}
+@media(max-width:900px){.dash-next-layout{grid-template-columns:1fr}.dash-feature-facts{grid-template-columns:1fr 1fr}}
+@media(max-width:550px){.dash-feature-facts{grid-template-columns:1fr}.dash-feature-card{padding:16px!important}}
 </style></head>
 <body>
 <div class="wrap">
   <h1 style="margin:0 0 4px">Schiedsrichter-Verwaltung</h1>
-  <div class="muted" style="margin-bottom:14px">Version 7.3.1 PWA · Einstellungen Feinschliff</div>
+  <div class="muted" style="margin-bottom:14px">Version 7.4.0 PWA · Nächste Spiele im Fokus</div>
 
   <div class="top">
     <a class="btn navlink nav-dashboard" href="#dashboard"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7"/><path d="M5 9v12h14V9"/><path d="M9 21v-7h6v7"/></svg><span>Start</span></a>
@@ -290,20 +314,24 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
   <noscript><div class="notice" style="margin-bottom:12px"><strong>Hinweis:</strong> Die Navigation funktioniert auch ohne JavaScript. Berechnungen, Speichern und Exportieren benötigen jedoch einen normalen Browser mit aktiviertem JavaScript.</div></noscript>
 
   <section id="dashboard" class="view active">
-    <div class="pageheading"><div><h2>Deine Saison</h2><p>Deine Einsätze, Einnahmen und nächsten Aufgaben auf einen Blick.</p></div></div>
+    <div class="pageheading"><div><h2>Deine nächsten Spiele</h2><p>Die kommenden Einsätze direkt im Blick – inklusive Importprüfung.</p></div></div>
     <div class="toolbar filterbar">
       <select id="dashSeason" class="btn"><option value="all">Alle Saisons</option></select>
       <select id="dashYear" class="btn"><option value="all">Alle Kalenderjahre</option></select>
       <select id="dashAssoc" class="btn"><option value="all">DEB + BEV</option><option>DEB</option><option>BEV</option></select>
     </div>
+    <div class="dash-next-layout">
+      <div class="card dash-feature-card"><div class="dash-feature-title"><span>🏒 Nächster Einsatz</span><span id="dashNextBadge" class="dash-feature-badge">Bevorstehend</span></div><div id="dashFeaturedGame" class="dash-feature-body"><span class="muted">Noch keine bevorstehenden Spiele.</span></div></div>
+      <div class="card dash-upcoming-card"><div class="sectiontitle">Weitere Spiele <span class="muted" style="font-size:13px;font-weight:400">· nächste 5 insgesamt</span></div><div id="dashNextGames" class="dash-list"></div><a href="#games" class="btn dash-link">Alle Spiele ansehen</a></div>
+    </div>
+    <div class="dash-section-label">Saison & Abrechnung</div>
     <div class="hero-grid">
       <div class="card metric-card accent"><div class="metric-label">Spiele bereits absolviert</div><div class="metric-value" id="statPlayed">0</div><div class="metric-sub" id="statPlayedSub">von 0 Spielen</div></div>
       <div class="card metric-card accent"><div class="metric-label">Bisher verdient</div><div class="metric-value" id="statEarned">0,00 €</div><div class="metric-sub">Vergangene Spiele · tatsächliche Gebühren</div></div>
       <div class="card metric-card"><div class="metric-label">Davon bezahlt</div><div class="metric-value" id="statPaid">0,00 €</div><div class="metric-sub" id="statPaidSub">0 Spiele bezahlt</div></div>
       <div class="card metric-card"><div class="metric-label">Noch bevorstehend</div><div class="metric-value" id="statUpcoming">0</div><div class="metric-sub" id="statUpcomingMoney">0,00 € geplant</div></div>
     </div>
-    <div class="dash-action-grid">
-      <div class="card dash-action-card"><div class="sectiontitle">Nächste Einsätze</div><div id="dashNextGames" class="dash-list"><span class="muted">Noch keine bevorstehenden Spiele.</span></div><a href="#games" class="btn dash-link">Alle Spiele ansehen</a></div>
+    <div class="dash-action-grid dash-tasks-layout">
       <div class="card dash-action-card dash-todo-card" id="dashTodoCard"><div class="sectiontitle">Noch zu erledigen</div><div id="dashTodo" class="dash-list"><span class="muted">Keine offenen Aufgaben.</span></div><a href="#games" class="btn dash-link">Zur Spieleverwaltung</a></div>
     </div>
     <div class="overview-split">
@@ -548,7 +576,7 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
 <div id="teamAliasList" style="margin-top:8px"></div>
 </div>
 </div></div></div></div></section>
-  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 7.3.0 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
+  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 7.4.0 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
 </div>
 
 <dialog id="gameDlg"><form method="dialog" id="gameForm" class="modal">
@@ -1324,19 +1352,27 @@ function renderDash(){
  const pct=a.length?Math.round(past.length/a.length*100):0;
  $('dashDetails').innerHTML=`<div class="mini-list"><div class="mini-row"><span>Vergangene · noch offen</span><strong>${past.filter(g=>(g.billingStatus||'offen')==='offen').length}</strong></div><div class="mini-row"><span>Abgerechnet, noch nicht bezahlt</span><strong>${past.filter(g=>g.billingStatus==='abgerechnet').length}</strong></div><div class="mini-row"><span>Gefahrene Kilometer bisher</span><strong>${km1(km)} km</strong></div><div class="mini-row"><span>Verpflegungspauschalen bisher</span><strong>${money(meal)}</strong></div><div class="mini-row"><span>BEV-Spielabgaben bisher</span><strong>${money(lev)}</strong></div></div><div class="progress-wrap"><div class="progress-head"><span>Saisonfortschritt nach Spielen</span><strong>${pct} %</strong></div><div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div></div>`;
  $('dashMonthlyBody').innerHTML=monthlyRows(a);
- // Dashboard-Kurzlisten: dieselben gefilterten Daten und Statusregeln wie in der Spieleansicht.
+ // Die nächsten Einsätze werden unabhängig von Saison-/Jahresfiltern angezeigt,
+ // damit ein bevorstehendes Spiel beim Saisonwechsel nicht verborgen bleibt.
  const nextBox=$('dashNextGames'),todoBox=$('dashTodo');
- if(nextBox){
-   nextBox.replaceChildren();
-   const next=upcoming.slice().sort((x,y)=>String(x.date||'').localeCompare(String(y.date||''))||String(x.time||'').localeCompare(String(y.time||''))).slice(0,4);
-   if(!next.length){const p=document.createElement('p');p.className='muted';p.textContent='Keine bevorstehenden Spiele im gewählten Zeitraum.';nextBox.append(p)}
-   next.forEach(g=>{
-     const item=document.createElement('div');item.className='dash-list-item';
-     const head=document.createElement('strong');head.textContent=(g.home||'Heimteam')+' – '+(g.away||'Gastteam');
-     const meta=document.createElement('small');meta.textContent=[g.date?new Date(g.date+'T12:00:00').toLocaleDateString('de-DE'):'',g.start||g.time||'',(state.halls.find(h=>h.id===g.hallId)||{}).name||'',g.league||'Liga offen',g.role||''].filter(Boolean).join(' · ');
-     item.append(head,meta);nextBox.append(item);
-   });
- }
+ const nextAll=state.games.filter(g=>!g.cancelled&&String(g.date||'')>=today).slice().sort((x,y)=>String(x.date||'').localeCompare(String(y.date||''))||String(x.start||x.time||'').localeCompare(String(y.start||y.time||''))).slice(0,5);
+ const featured=$('dashFeaturedGame'),badge=$('dashNextBadge');
+ const gameHall=g=>(state.halls.find(h=>String(h.id)===String(g.hallId))||{}).name||'Eishalle noch nicht hinterlegt';
+ const gameDate=g=>{const d=new Date(String(g.date||'')+'T12:00:00');return Number.isNaN(d.getTime())?String(g.date||''):d.toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})};
+ const openDashGame=g=>{location.hash='#games';openGame(g.id)};
+ if(featured){featured.replaceChildren();const g=nextAll[0];if(!g){featured.textContent='Aktuell sind keine zukünftigen Spiele hinterlegt.';if(badge)badge.textContent='Keine Einsätze'}else{
+   if(badge){badge.textContent=g.needsReview?'Import prüfen':'Bevorstehend';badge.classList.toggle('review',!!g.needsReview)}
+   const league=document.createElement('div');league.className='dash-feature-league';league.textContent=[g.assoc,g.league].filter(Boolean).join(' · ')||'Liga noch offen';
+   const teams=document.createElement('div');teams.className='dash-feature-teams';teams.textContent=(g.home||'Heimteam')+' – '+(g.away||'Gastteam');
+   const facts=document.createElement('div');facts.className='dash-feature-facts';
+   [['📅',gameDate(g)],['🕒',(g.start||g.time||'Uhrzeit offen')+' Uhr'],['📍',gameHall(g)],['🏒',g.role||'Funktion noch offen']].forEach(([ico,value])=>{const e=document.createElement('div');e.className='dash-feature-fact';const ic=document.createElement('span');ic.textContent=ico;const t=document.createElement('span');t.textContent=value;e.append(ic,t);facts.append(e)});
+   const actions=document.createElement('div');actions.className='dash-feature-actions';const btn=document.createElement('button');btn.className='btn primary';btn.type='button';btn.textContent=g.needsReview?'Jetzt prüfen':'Spiel öffnen';btn.onclick=()=>openDashGame(g);actions.append(btn);
+   featured.append(league,teams,facts,actions);
+ }}
+ if(nextBox){nextBox.replaceChildren();const next=nextAll.slice(1);if(!next.length){const p=document.createElement('p');p.className='muted';p.textContent=nextAll.length?'Keine weiteren Spiele geplant.':'Keine bevorstehenden Spiele.';nextBox.append(p)}
+ next.forEach(g=>{const item=document.createElement('button');item.type='button';item.className='dash-list-item';item.onclick=()=>openDashGame(g);
+ const tile=document.createElement('span');tile.className='dash-date-tile';const dt=new Date(String(g.date||'')+'T12:00:00');const w=document.createElement('span');w.textContent=Number.isNaN(dt.getTime())?'—':dt.toLocaleDateString('de-DE',{weekday:'short'});const d=document.createElement('b');d.textContent=Number.isNaN(dt.getTime())?'—':String(dt.getDate());tile.append(w,d);
+ const copy=document.createElement('span');copy.className='dash-game-copy';const head=document.createElement('strong');head.textContent=(g.home||'Heimteam')+' – '+(g.away||'Gastteam');const meta=document.createElement('small');meta.textContent=[g.start||g.time||'',g.assoc,g.league,gameHall(g)].filter(Boolean).join(' · ');copy.append(head,meta);if(g.needsReview){const review=document.createElement('span');review.className='dash-review-dot';review.textContent='Import prüfen';copy.append(review)}item.append(tile,copy);nextBox.append(item)})}
  if(todoBox){
    todoBox.replaceChildren();
    const entries=[
