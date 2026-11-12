@@ -309,7 +309,7 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
 <body>
 <div class="wrap">
   <h1 style="margin:0 0 4px">Schiedsrichter-Verwaltung</h1>
-  <div class="muted" style="margin-bottom:14px">Version 7.4.5 PWA · easyRef-Diagnose</div>
+  <div class="muted" style="margin-bottom:14px">Version 7.4.6 PWA · easyRef-UID-Korrektur</div>
 
   <div class="top">
     <a class="btn navlink nav-dashboard" href="#dashboard"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7"/><path d="M5 9v12h14V9"/><path d="M9 21v-7h6v7"/></svg><span>Start</span></a>
@@ -586,7 +586,7 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
 <div id="teamAliasList" style="margin-top:8px"></div>
 </div>
 </div></div></div></div></section>
-  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 7.4.5 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
+  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 7.4.6 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
 </div>
 
 <dialog id="gameDlg"><form method="dialog" id="gameForm" class="modal">
@@ -1831,7 +1831,11 @@ function importEasyEvents(events){
      let changed=false;
      const reasons=[];
      const mark=(reason)=>{changed=true;reasons.push(reason)};
-     if(easyUid(existing.sourceKey)!==key){existing.sourceKey=key;mark('UID-Zuordnung')}
+     // Preserve the original UID when a legacy/file/calendar import matches by
+     // unique event signature. Different feeds can use different UIDs for the
+     // same fixture; flipping sourceKey on every sync caused false updates.
+     // Only initialize a missing UID once. Signature matching remains available.
+     if(!easyUid(existing.sourceKey)){existing.sourceKey=key;mark('UID erstmalig ergänzt')}
      if(existing.source!=='easyRef'){existing.source='easyRef';mark('Importquelle')}
      // Only update fields still matching the previous import. User edits win.
      // Legacy imports lack a snapshot: keep their existing fields intact and flag them for review.
