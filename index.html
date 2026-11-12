@@ -309,7 +309,7 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
 <body>
 <div class="wrap">
   <h1 style="margin:0 0 4px">Schiedsrichter-Verwaltung</h1>
-  <div class="muted" style="margin-bottom:14px">Version 7.4.7 PWA · Cloud-Konfliktschutz</div>
+  <div class="muted" style="margin-bottom:14px">Version 7.4.8 PWA · Importprüfung nacheinander</div>
 
   <div class="top">
     <a class="btn navlink nav-dashboard" href="#dashboard"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7"/><path d="M5 9v12h14V9"/><path d="M9 21v-7h6v7"/></svg><span>Start</span></a>
@@ -578,6 +578,7 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
 </div>
 <label style="display:flex;align-items:center;gap:8px;margin-top:12px"><input checked="" id="easyAutoSync" type="checkbox"/> Beim Öffnen automatisch synchronisieren</label>
 <div class="muted" id="easyStatus" style="margin-top:10px" aria-live="polite"></div>
+<div style="margin:12px 0"><button type="button" class="btn primary" onclick="startImportReview()">Importierte Spiele nacheinander prüfen →</button><div class="muted" style="margin-top:6px">Öffnet nur Spiele mit ausstehender Importprüfung. Speichern & weiter führt zum nächsten Spiel.</div></div>
 <div id="easyDiagnostics" class="muted" style="margin-top:10px;padding:10px 12px;border:1px solid var(--border,#dbe2ee);border-radius:10px" aria-live="polite">Diagnose erscheint nach dem nächsten Abgleich.</div>
 <div class="muted" id="easyLastSuccess" style="margin-top:6px" aria-live="polite"></div>
 <div style="margin-top:16px;border-top:1px solid var(--line,#ddd);padding-top:12px">
@@ -586,11 +587,12 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
 <div id="teamAliasList" style="margin-top:8px"></div>
 </div>
 </div></div></div></div></section>
-  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 7.4.7 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
+  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 7.4.8 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
 </div>
 
 <dialog id="gameDlg"><form method="dialog" id="gameForm" class="modal">
   <div class="modaltop"><strong id="gameTitle">Spiel hinzufügen</strong><button type="button" class="btn" id="closeGame">Schließen</button></div>
+  <div id="reviewQueueBar" hidden style="margin:10px 0;padding:12px;border:1px solid var(--border,#cbd5e1);border-radius:12px;display:none;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><strong id="reviewQueueLabel">Importprüfung</strong><button type="button" class="btn" id="reviewQueueSkip">Überspringen →</button></div>
   <input type="hidden" id="gId"><input type="hidden" id="gSource"><input type="hidden" id="gSourceKey">
   <div class="formgrid">
     <div class="game-section"><div class="game-section-title">Spieldaten</div></div>
@@ -640,7 +642,7 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
         <button type="button" class="btn" id="autoTimes">Abfahrt/Rückkehr berechnen</button>
         <button type="button" class="btn" id="resetAmount">Regelgebühr übernehmen</button>
       </div>
-      <button class="btn primary" value="default">Speichern</button>
+      <button class="btn primary" id="saveGameButton" value="default">Speichern</button>
     </div>
 </form></dialog>
 
@@ -2328,6 +2330,31 @@ function refreshGameConditionalFields(){
  $('hotelWrap').classList.toggle('show',extraCosts);$('otherCostsWrap').classList.toggle('show',extraCosts);$('invoiceTravelWrap').classList.toggle('show',extraCosts);
  $('needsReviewWrap').classList.toggle('show',imported);
 }
+// A review queue is a navigation aid only. No games are modified until the user saves.
+let reviewQueue=null;
+function pendingEasyReviews(){return state.games.filter(g=>g.source==='easyRef'&&(g.needsReview||importRequiredMissing(g))).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.start||'').localeCompare(String(b.start||''))||a.id-b.id).map(g=>g.id)}
+function updateReviewQueueBar(){
+ const bar=$('reviewQueueBar'),id=Number($('gId').value),remaining=reviewQueue?.ids.filter(x=>state.games.some(g=>g.id===x&&(g.needsReview||importRequiredMissing(g))))||[];
+ const active=!!reviewQueue&&reviewQueue.ids.includes(id);
+ bar.hidden=!active;bar.style.display=active?'flex':'none';
+ if(!active)return;
+ const idx=reviewQueue.ids.indexOf(id);
+ $('reviewQueueLabel').textContent=`Importprüfung · ${idx+1} von ${reviewQueue.ids.length} · ${remaining.length} noch offen`;
+ $('saveGameButton').textContent='Speichern & weiter →';
+}
+function openNextReview(currentId){
+ if(!reviewQueue)return;
+ const i=reviewQueue.ids.indexOf(currentId);
+ const next=reviewQueue.ids.slice(i+1).find(id=>state.games.some(g=>g.id===id&&(g.needsReview||importRequiredMissing(g))));
+ if(next){openGame(next);return}
+ reviewQueue=null;$('saveGameButton').textContent='Speichern';
+}
+window.startImportReview=function(){
+ const ids=pendingEasyReviews();if(!ids.length){alert('Keine importierten Spiele zur Prüfung vorhanden.');return}
+ reviewQueue={ids};openGame(ids[0]);
+};
+$('reviewQueueSkip').onclick=()=>{const id=Number($('gId').value),queued=reviewQueue;$('gameDlg').close();reviewQueue=queued;openNextReview(id)};
+$('gameDlg').addEventListener('close',()=>{reviewQueue=null;$('saveGameButton').textContent='Speichern';});
 window.openGame=function(id){
  $('gameForm').reset();$('gActual').dataset.manual='0';$('gId').value='';$('gSource').value='manual';$('gSourceKey').value='';$('gDate').value=new Date().toISOString().slice(0,10);$('gStart').value='';$('gRole').value='';$('gSystem').value='';$('gNote').value='';$('gTournamentNo').value='1';$('gHotel').value='0';$('gOther').value='0';$('gBillingStatus').value='offen';$('gBilledDate').value='';$('gPaidDate').value='';$('gCancelTravel').checked=false;$('gExtraCosts').checked=false;$('gInvoiceTravel').checked=false;$('gNeedsReview').checked=false;$('gNeedsReview').dataset.touched='0';$('gCancelAmount').value='0';$('gCancelMode').value='auto';fillHallSelect();
  if(id){
@@ -2339,14 +2366,14 @@ window.openGame=function(id){
  } else {
    updateGameLeagueOptions('',true);$('gameTitle').textContent='Spiel hinzufügen';
  }
- refreshGameConditionalFields();updateGameRule(!id);$('gameDlg').showModal()
+ refreshGameConditionalFields();updateGameRule(!id);$('gameDlg').showModal();updateReviewQueueBar()
 }
 function gameDraft(){return{id:Number($('gId').value)||Date.now(),source:$('gSource').value||'manual',sourceKey:$('gSourceKey').value||'',assoc:$('gAssoc').value,date:$('gDate').value,home:$('gHome').value,away:$('gAway').value,league:$('gLeague').value,role:$('gRole').value,system:$('gSystem').value,start:$('gStart').value,hallId:Number($('gHall').value)||null,km:Number($('gKm').value)||0,depart:$('gDepart').value,return:$('gReturn').value,actual:Number($('gActual').value)||0,actualManual:$('gActual').dataset.manual==='1',hotel:Number($('gHotel').value)||0,other:Number($('gOther').value)||0,billingStatus:$('gBillingStatus').value||'offen',billedDate:$('gBilledDate').value||'',paidDate:$('gPaidDate').value||'',cancelAmount:Number($('gCancelAmount').value)||0,cancelMode:$('gCancelMode').value||'auto',note:$('gNote').value,tournament:$('gTournament').checked,tournamentNo:Number($('gTournamentNo').value)||1,cancelled:$('gCancelled').checked,cancelTravel:$('gCancelTravel').checked,invoiceTravel:$('gInvoiceTravel').checked,needsReview:$('gNeedsReview').checked}}
 function updateGameRule(force=false){const draft=gameDraft(),a=feeRule(draft);$('gRule').value=a.toFixed(2);if(force||$('gActual').dataset.manual!=='1'){if(force)$('gActual').dataset.manual='0';draft.actualManual=false;draft.actual=a;const shown=draft.cancelled?cancellationAmount(draft):a;$('gActual').value=shown.toFixed(2)}}
 $('gAssoc').onchange=()=>{updateGameLeagueOptions('',true);updateGameRule(true);refreshGameConditionalFields()};$('gDate').onchange=()=>{updateGameLeagueOptions('',true);updateGameRule(true);refreshGameConditionalFields()};['gLeague','gRole','gStart','gTournament','gTournamentNo'].forEach(id=>$(id).onchange=()=>{updateGameRule(false);refreshGameConditionalFields()});$('gSystem').onchange=()=>{updateCrewNoteTemplate(false);updateGameRule(false);refreshGameConditionalFields()};
 $('gActual').addEventListener('input',()=>{$('gActual').dataset.manual='1'});
 $('gCancelled').addEventListener('change',()=>{refreshGameConditionalFields();updateGameRule(false)});['gCancelTravel','gCancelMode','gCancelAmount'].forEach(id=>$(id).addEventListener('change',()=>updateGameRule(false)));$('gExtraCosts').addEventListener('change',refreshGameConditionalFields);$('gNeedsReview').addEventListener('change',()=>{$('gNeedsReview').dataset.touched='1'});
-$('resetAmount').onclick=()=>updateGameRule(true);$('closeGame').onclick=()=>$('gameDlg').close();$('addGame').onclick=()=>openGame();
+$('resetAmount').onclick=()=>updateGameRule(true);$('closeGame').onclick=()=>{$('gameDlg').close();reviewQueue=null};$('addGame').onclick=()=>openGame();
 $('gHall').onchange=()=>{const h=state.halls.find(x=>x.id===Number($('gHall').value));if(h&&Number(h.km)>0)$('gKm').value=(Number(h.km)*2).toFixed(1)};
 $('gameForm').onsubmit=async e=>{
  e.preventDefault();
@@ -2381,7 +2408,8 @@ $('gameForm').onsubmit=async e=>{
    state.games[i]=g;
  }else state.games.push(g);
  updateUneditedImportedTeams();
- save();$('gameDlg').close();renderAll();
+ const queued=reviewQueue;const continueReview=!!queued&&queued.ids.includes(g.id);
+ save();$('gameDlg').close();if(continueReview)reviewQueue=queued;renderAll();
 
  if(g.date&&g.hallId&&state.personal?.start){
    const st=$('routeServiceStatus');
@@ -2395,6 +2423,7 @@ $('gameForm').onsubmit=async e=>{
      alert('Spiel wurde gespeichert, aber die automatische Routenberechnung ist fehlgeschlagen:\n\n'+err.message+'\n\nDie Werte können weiterhin manuell eingetragen werden.');
    }
  }
+ if(continueReview)openNextReview(g.id);
 };
 
 window.openHall=function(id){$('hallForm').reset();$('hId').value='';if(id){const h=state.halls.find(x=>x.id===id);$('hId').value=id;$('hName').value=h.name;$('hAddress').value=h.address;$('hKm').value=h.km;$('hMin').value=h.minutes;$('hLat').value=h.lat??'';$('hLon').value=h.lon??''}$('hallDlg').showModal()}
