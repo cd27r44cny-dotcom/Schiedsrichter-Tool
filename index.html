@@ -309,7 +309,7 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
 <body>
 <div class="wrap">
   <h1 style="margin:0 0 4px">Schiedsrichter-Verwaltung</h1>
-  <div class="muted" style="margin-bottom:14px">Version 7.4.6 PWA · easyRef-UID-Korrektur</div>
+  <div class="muted" style="margin-bottom:14px">Version 7.4.7 PWA · Cloud-Konfliktschutz</div>
 
   <div class="top">
     <a class="btn navlink nav-dashboard" href="#dashboard"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7"/><path d="M5 9v12h14V9"/><path d="M9 21v-7h6v7"/></svg><span>Start</span></a>
@@ -586,7 +586,7 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
 <div id="teamAliasList" style="margin-top:8px"></div>
 </div>
 </div></div></div></div></section>
-  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 7.4.6 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
+  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 7.4.7 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
 </div>
 
 <dialog id="gameDlg"><form method="dialog" id="gameForm" class="modal">
@@ -941,48 +941,94 @@ async function cloudPull(){
  const rows=await supaRequest('/rest/v1/referee_state?select=data,updated_at&limit=1');
  return Array.isArray(rows)&&rows.length?rows[0]:null;
 }
-async function cloudPush(){
+// Remember the last common state per account and browser. This is not a backup.
+const SYNC_BASE_KEY='ref_tool_sync_base_v2';
+function syncFingerprint(v){
+ const str=JSON.stringify(v||null);let h=2166136261;
+ for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}
+ return (h>>>0).toString(16)+':'+str.length;
+}
+function syncBaseKey(){return SYNC_BASE_KEY+':'+(syncCfg.url||'')+':'+(syncSession?.user?.id||'')}
+function getSyncBase(){return safeGet(syncBaseKey())||''}
+function markSynced(){safeSet(syncBaseKey(),syncFingerprint(state))}
+let cloudSyncBusy=false;
+async function guardedCloudPush(){
  if(!syncSession?.user?.id)return;
  await refreshCloudSession();
- await supaRequest('/rest/v1/referee_state?on_conflict=user_id',{
-   method:'POST',
-   body:{user_id:syncSession.user.id,data:state,updated_at:new Date(Number(state?._meta?.updatedAt||Date.now())).toISOString()},
-   prefer:'resolution=merge-duplicates,return=minimal'
- });
- setCloudStatus('Synchronisiert: '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}),'ok');
+ const remote=await cloudPull();
+ const snapshot=JSON.parse(JSON.stringify(state));
+ const localHash=syncFingerprint(snapshot), remoteHash=syncFingerprint(remote?.data);
+ if(remote?.data && remoteHash===localHash){markSynced();return}
+ const base=getSyncBase();
+ if(remote?.data && (!base || remoteHash!==base)){
+   throw new Error('Cloud-Konflikt: Der Cloud-Datenstand hat sich geändert. Bitte „Jetzt synchronisieren“ wählen und den Datenstand prüfen. Es wurde nichts überschrieben.');
+ }
+ const ts=new Date(Number(snapshot?._meta?.updatedAt||Date.now())).toISOString();
+ if(remote?.data){
+   // Conditional update: do not overwrite a revision that changed since cloudPull.
+   const filter=encodeURIComponent(remote.updated_at||'');
+   const rows=await supaRequest('/rest/v1/referee_state?user_id=eq.'+encodeURIComponent(syncSession.user.id)+'&updated_at=eq.'+filter,{
+     method:'PATCH',body:{data:snapshot,updated_at:ts},prefer:'return=representation'
+   });
+   if(!Array.isArray(rows)||rows.length!==1)throw new Error('Cloud-Daten wurden inzwischen auf einem anderen Gerät geändert. Kein Überschreiben erfolgt.');
+ }else{
+   // Do not upsert over an existing row created by another device.
+   await supaRequest('/rest/v1/referee_state',{method:'POST',body:{user_id:syncSession.user.id,data:snapshot,updated_at:ts},prefer:'return=representation'});
+ }
+ if(syncFingerprint(state)===localHash)markSynced();
+ else {safeSet(syncBaseKey(),localHash);scheduleCloudPush()}
+}
+async function cloudPush(){
+ if(cloudSyncBusy){scheduleCloudPush();return}
+ cloudSyncBusy=true;
+ try{await guardedCloudPush();setCloudStatus('Synchronisiert: '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}),'ok')}
+ finally{cloudSyncBusy=false}
 }
 function scheduleCloudPush(){
  if(!syncCfg.auto||!syncSession?.access_token||cloudApplying)return;
  clearTimeout(cloudPushTimer);
- cloudPushTimer=setTimeout(()=>cloudPush().catch(e=>setCloudStatus('Cloud-Sync fehlgeschlagen: '+e.message,'error')),1200);
+ cloudPushTimer=setTimeout(()=>cloudPush().catch(e=>setCloudStatus(e.message,'error')),1200);
 }
-async function syncCloudBidirectional(forcePrompt=false){
+async function syncCloudBidirectional(interactive=false){
  if(!syncSession?.access_token)throw new Error('Bitte zuerst anmelden.');
- setCloudStatus('Synchronisierung läuft …');
- const remote=await cloudPull();
- if(!remote?.data){
-   await cloudPush();setCloudStatus('Lokaler Datenstand wurde als erster Cloud-Datenstand gespeichert.','ok');return;
- }
- const remoteTs=Number(remote.data?._meta?.updatedAt||new Date(remote.updated_at||0).getTime()||0);
- const localTs=Number(state?._meta?.updatedAt||0);
- let takeRemote=remoteTs>localTs;
- if(forcePrompt && localTs && remoteTs && JSON.stringify(remote.data)!==JSON.stringify(state)){
-   takeRemote=confirm('Es gibt bereits Cloud-Daten.\n\nOK = Cloud-Daten auf diesem Gerät verwenden\nAbbrechen = diesen lokalen Datenstand in die Cloud übertragen.');
-   if(!takeRemote){await cloudPush();setCloudStatus('Lokaler Datenstand wurde in die Cloud übertragen.','ok');return}
- }
- if(takeRemote){
-   cloudApplying=true;
-   state=remote.data;
-   repairExistingEasyRefTeams();
-   safeSet(KEY,JSON.stringify(state));
-   cloudApplying=false;
-   renderAll();
-   setCloudStatus('Cloud-Daten wurden auf dieses Gerät übernommen.','ok');
- }else if(localTs>remoteTs){
-   await cloudPush();
- }else{
-   setCloudStatus('Daten sind bereits synchron.','ok');
- }
+ if(cloudSyncBusy){setCloudStatus('Eine Synchronisierung läuft bereits. Bitte kurz warten.');return}
+ clearTimeout(cloudPushTimer);
+ cloudSyncBusy=true;
+ try{
+  setCloudStatus('Synchronisierung läuft …');
+  const remote=await cloudPull();
+  if(!remote?.data){
+    // Create without upsert; a simultaneous creation must fail rather than overwrite.
+    await supaRequest('/rest/v1/referee_state',{method:'POST',body:{user_id:syncSession.user.id,data:state,updated_at:new Date(Number(state?._meta?.updatedAt||Date.now())).toISOString()},prefer:'return=representation'});
+    markSynced();setCloudStatus('Lokaler Datenstand erstmals in der Cloud gespeichert.','ok');return;
+  }
+  const localHash=syncFingerprint(state),remoteHash=syncFingerprint(remote.data),base=getSyncBase();
+  if(localHash===remoteHash){markSynced();setCloudStatus('Daten sind bereits synchron.','ok');return}
+  const localChanged=base && localHash!==base;
+  const remoteChanged=base && remoteHash!==base;
+  let takeRemote;
+  if(base && localChanged && !remoteChanged){takeRemote=false}
+  else if(base && !localChanged && remoteChanged){takeRemote=true}
+  else if(!interactive){
+    setCloudStatus('Unterschiedliche Datenstände erkannt. Aus Sicherheitsgründen wurde nichts überschrieben. Unter „Jetzt synchronisieren“ kannst du den Datenstand auswählen.','error');return;
+  }else{
+    takeRemote=confirm('Unterschiedliche Datenstände erkannt.\n\nOK = Cloud-Daten auf diesem Gerät verwenden\nAbbrechen = lokale Daten behalten (Cloud NICHT überschreiben).\n\nVor dem Übernehmen bei Bedarf JSON-Backup erstellen.');
+    if(!takeRemote){setCloudStatus('Lokale Daten behalten. Cloud-Daten wurden NICHT überschrieben.','error');return}
+  }
+  if(takeRemote){
+    cloudApplying=true;
+    try{state=remote.data;repairExistingEasyRefTeams();safeSet(KEY,JSON.stringify(state))}
+    finally{cloudApplying=false}
+    markSynced();renderAll();setCloudStatus('Cloud-Daten auf dieses Gerät übernommen.','ok');
+  }else{
+    // Local changes only, remote still at baseline. Use revision-checked update.
+    const filter=encodeURIComponent(remote.updated_at||'');
+    const rows=await supaRequest('/rest/v1/referee_state?user_id=eq.'+encodeURIComponent(syncSession.user.id)+'&updated_at=eq.'+filter,{
+      method:'PATCH',body:{data:state,updated_at:new Date(Number(state?._meta?.updatedAt||Date.now())).toISOString()},prefer:'return=representation'});
+    if(!Array.isArray(rows)||rows.length!==1)throw new Error('Cloud-Daten haben sich inzwischen geändert. Nichts wurde überschrieben.');
+    markSynced();setCloudStatus('Lokale Änderungen sicher synchronisiert.','ok');
+  }
+ }finally{cloudSyncBusy=false}
 }
 async function cloudStartupSync(){
  if(!syncSession?.access_token||syncCfg.auto===false)return;
@@ -2195,7 +2241,7 @@ $('saveTimeSettings').onclick=()=>{state.personal={...state.personal,prepYouth:N
 $('syncSaveConfig').onclick=()=>{persistSyncConfig();setCloudStatus('Cloud-Zugangsdaten wurden auf diesem Gerät gespeichert.','ok')};
 $('syncSignup').onclick=async()=>{try{setCloudStatus('Konto wird erstellt …');const d=await cloudSignUp();setCloudStatus(d?.access_token?'Konto erstellt und angemeldet.':'Konto erstellt. Falls E-Mail-Bestätigung aktiviert ist, bitte zuerst den Link in der E-Mail öffnen.','ok');if(d?.access_token)await syncCloudBidirectional(true)}catch(e){setCloudStatus('Konto konnte nicht erstellt werden: '+e.message,'error')}};
 $('syncLogin').onclick=async()=>{try{setCloudStatus('Anmeldung läuft …');await cloudLogin();setCloudStatus('Angemeldet und synchronisiert.','ok')}catch(e){setCloudStatus('Anmeldung fehlgeschlagen: '+e.message,'error')}};
-$('syncNow').onclick=async()=>{try{await syncCloudBidirectional(false)}catch(e){setCloudStatus('Synchronisierung fehlgeschlagen: '+e.message,'error')}};
+$('syncNow').onclick=async()=>{try{await syncCloudBidirectional(true)}catch(e){setCloudStatus('Synchronisierung fehlgeschlagen: '+e.message,'error')}};
 $('syncLogout').onclick=()=>{syncSession=null;safeSet(SYNC_SESSION_KEY,'null');setCloudStatus('Auf diesem Gerät abgemeldet. Lokale Daten bleiben erhalten.');};
 $('syncAuto').onchange=()=>{persistSyncConfig();if(syncCfg.auto)scheduleCloudPush()};
 
