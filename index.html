@@ -309,7 +309,7 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
 <body>
 <div class="wrap">
   <h1 style="margin:0 0 4px">Schiedsrichter-Verwaltung</h1>
-  <div class="muted" style="margin-bottom:14px">Version 7.4.4 PWA · easyRef-Abgleich</div>
+  <div class="muted" style="margin-bottom:14px">Version 7.4.5 PWA · easyRef-Diagnose</div>
 
   <div class="top">
     <a class="btn navlink nav-dashboard" href="#dashboard"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7"/><path d="M5 9v12h14V9"/><path d="M9 21v-7h6v7"/></svg><span>Start</span></a>
@@ -578,6 +578,7 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
 </div>
 <label style="display:flex;align-items:center;gap:8px;margin-top:12px"><input checked="" id="easyAutoSync" type="checkbox"/> Beim Öffnen automatisch synchronisieren</label>
 <div class="muted" id="easyStatus" style="margin-top:10px" aria-live="polite"></div>
+<div id="easyDiagnostics" class="muted" style="margin-top:10px;padding:10px 12px;border:1px solid var(--border,#dbe2ee);border-radius:10px" aria-live="polite">Diagnose erscheint nach dem nächsten Abgleich.</div>
 <div class="muted" id="easyLastSuccess" style="margin-top:6px" aria-live="polite"></div>
 <div style="margin-top:16px;border-top:1px solid var(--line,#ddd);padding-top:12px">
 <strong>Gelernte Mannschaftsnamen</strong>
@@ -585,7 +586,7 @@ dialog{background:var(--card);color:var(--text);max-height:94dvh;overflow:auto}d
 <div id="teamAliasList" style="margin-top:8px"></div>
 </div>
 </div></div></div></div></section>
-  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 7.4.4 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
+  <div class="muted" style="text-align:center;margin:22px 0 8px">Schiedsrichter-Verwaltung 7.4.5 PWA · lokal + optional verschlüsselte Konto-Anmeldung für Cloud-Sync</div>
 </div>
 
 <dialog id="gameDlg"><form method="dialog" id="gameForm" class="modal">
@@ -1804,31 +1805,46 @@ function findImportedGame(e){
  const bySignature=state.games.filter(g=>isEasyGame(g)&&easySignature(g.easyRefSnapshot||g)===sig);
  return bySignature.length===1?bySignature[0]:null;
 }
+function showEasyDiagnostics(res){
+ const el=$('easyDiagnostics');if(!el)return;
+ const rows=res.diagnostics||[];
+ if(!rows.length){el.textContent='Diagnose: Bei bestehenden Spielen wurden keine Änderungen erkannt.';return}
+ el.replaceChildren();
+ const title=document.createElement('strong');title.textContent='Diagnose: '+rows.length+' als aktualisiert erkannte Spiele';el.append(title);
+ const list=document.createElement('ol');list.style.cssText='margin:8px 0 0;padding-left:22px';
+ for(const r of rows.slice(0,30)){
+  const li=document.createElement('li');li.textContent=[r.date,r.start,[r.home,r.away].filter(Boolean).join(' – ')].filter(Boolean).join(' · ')+' → '+r.reasons.join('; ');list.append(li)
+ }
+ el.append(list);
+}
 function importEasyEvents(events){
  // Team aliases are already applied by the ICS parser. Avoid mutating snapshots
  // before comparing them: this previously made imports appear changed repeatedly.
  repairExistingEasyRefTeams();
  let added=0,updated=0,skipped=0,review=0;
+ const diagnostics=[];
  for(const e of events){
    const key=easyUid(e.uid); if(!key)continue;
    const existing=findImportedGame(e);
    const incoming={date:e.date,start:e.start||'',home:e.home||'',away:e.away||'',rawHome:e.rawHome||e.home||'',rawAway:e.rawAway||e.away||'',location:e.location||''};
    if(existing){
      let changed=false;
-     if(easyUid(existing.sourceKey)!==key){existing.sourceKey=key;changed=true}
-     if(existing.source!=='easyRef'){existing.source='easyRef';changed=true}
+     const reasons=[];
+     const mark=(reason)=>{changed=true;reasons.push(reason)};
+     if(easyUid(existing.sourceKey)!==key){existing.sourceKey=key;mark('UID-Zuordnung')}
+     if(existing.source!=='easyRef'){existing.source='easyRef';mark('Importquelle')}
      // Only update fields still matching the previous import. User edits win.
      // Legacy imports lack a snapshot: keep their existing fields intact and flag them for review.
      const prev=existing.easyRefSnapshot;
      if(prev){
        for(const field of ['date','start','home','away']){
-         if(existing[field]===prev[field]&&existing[field]!==incoming[field]){existing[field]=incoming[field];changed=true}
+         if(existing[field]===prev[field]&&existing[field]!==incoming[field]){existing[field]=incoming[field];mark('Spielfeld: '+field)}
        }
        if(incoming.location&&incoming.location!==prev.location){
          const oldHall=state.halls.find(h=>h.id===existing.hallId);
          if(oldHall&&normalizedHallLocation(oldHall.address)===normalizedHallLocation(prev.location)){
            const newId=findOrCreateHall(incoming.location);
-           if(existing.hallId!==newId){existing.hallId=newId;changed=true}
+           if(existing.hallId!==newId){existing.hallId=newId;mark('Hallenzuordnung')}
          }
        }
        // Do not overwrite league, role, system, notes, fees or billing information.
@@ -1837,13 +1853,14 @@ function importEasyEvents(events){
        // when one of those calendar values really differs.
        const calendarFields=['date','start','home','away','rawHome','rawAway','location'];
        if(calendarFields.some(field=>String(prev[field]??'')!==String(incoming[field]??''))){
-         existing.easyRefSnapshot=incoming;changed=true;
+         const differing=calendarFields.filter(field=>String(prev[field]??'')!==String(incoming[field]??''));
+         existing.easyRefSnapshot=incoming;mark('Kalender: '+differing.join(', '));
        }
      }
-     if(!prev){existing.easyRefSnapshot=incoming;changed=true}
-     if(existing.system&&isBlankCrewTemplate(existing.note)&&!existing.note){existing.note=crewTemplate(existing.system);changed=true}
-     if(syncImportReview(existing))changed=true;
-     if(changed)updated++;else skipped++;
+     if(!prev){existing.easyRefSnapshot=incoming;mark('Kalender-Snapshot erstmalig')}
+     if(existing.system&&isBlankCrewTemplate(existing.note)&&!existing.note){existing.note=crewTemplate(existing.system);mark('Notizvorlage ergänzt')}
+     if(syncImportReview(existing))mark('Prüfstatus');
+     if(changed){updated++;diagnostics.push({date:e.date,start:e.start||'',home:e.home||'',away:e.away||'',reasons})}else skipped++;
      if(existing.needsReview)review++;
      continue;
    }
@@ -1860,7 +1877,7 @@ function importEasyEvents(events){
  }
  const cleanup=reconcileImportedHalls();
  if(added||updated||cleanup.fixed||cleanup.merged)save();
- renderAll();renderHallCleanupReview();return{added,updated,skipped,review,relinked:cleanup.fixed};
+ renderAll();renderHallCleanupReview();return{added,updated,skipped,review,relinked:cleanup.fixed,diagnostics};
 }
 $('cleanupImportedHalls').onclick=()=>{const result=reconcileImportedHalls();save();renderAll();renderHallCleanupReview();$('hallCleanupStatus').textContent=result.merged?`${result.merged} doppelte Halle(n) zusammengeführt; ${result.fixed} Spiele neu zugeordnet.`:'Keine eindeutig identischen Hallen automatisch zusammengeführt. Prüfe gegebenenfalls die Auswahl unten.'};
 // The last successful calendar import is device-local metadata, separate from referee data.
@@ -1879,7 +1896,7 @@ function recordEasyLastSuccess(kind,res){
 renderEasyLastSuccess();
 $('saveEasyUrl').onclick=()=>{state.personal.easyUrl=$('easyUrl').value.trim();state.personal.easyAutoSync=$('easyAutoSync').checked;save();$('easyStatus').textContent='Kalender-URL und automatische Synchronisierung gespeichert.'}
 $('easyAutoSync').onchange=()=>{state.personal.easyAutoSync=$('easyAutoSync').checked;save()};
-$('icsFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;try{const raw=await f.text(),events=parseEasyRefICS(raw);if(!events.length)throw new Error('Keine Kalendertermine lesbar');const res=importEasyEvents(events);recordEasyLastSuccess('ics',res);$('easyStatus').textContent=`ICS importiert: ${res.added} neu, ${res.updated} aktualisiert, ${res.skipped} bereits vorhanden${res.relinked?`, ${res.relinked} Hallen zugeordnet`:''}${res.review?`, ${res.review} zu prüfen`:''}.`}catch(err){$('easyStatus').textContent='Die ICS-Datei konnte nicht verarbeitet werden.'}finally{e.target.value=''}};
+$('icsFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;try{const raw=await f.text(),events=parseEasyRefICS(raw);if(!events.length)throw new Error('Keine Kalendertermine lesbar');const res=importEasyEvents(events);recordEasyLastSuccess('ics',res);showEasyDiagnostics(res);$('easyStatus').textContent=`ICS importiert: ${res.added} neu, ${res.updated} aktualisiert, ${res.skipped} bereits vorhanden${res.relinked?`, ${res.relinked} Hallen zugeordnet`:''}${res.review?`, ${res.review} zu prüfen`:''}.`}catch(err){$('easyStatus').textContent='Die ICS-Datei konnte nicht verarbeitet werden.'}finally{e.target.value=''}};
 let easyFetchPromise=null;
 async function synchronizeEasyRef(automatic=false){
  if(easyFetchPromise)return easyFetchPromise;
@@ -1895,6 +1912,7 @@ async function synchronizeEasyRef(automatic=false){
    const events=parseEasyRefICS(raw);if(!events.length)throw new Error('Keine Kalendertermine lesbar');
    const res=importEasyEvents(events);
    recordEasyLastSuccess('calendar',res);
+   showEasyDiagnostics(res);
    status.textContent=`${automatic?'Automatischer Abgleich':'easyRef synchronisiert'}: ${res.added} neu, ${res.updated} aktualisiert, ${res.skipped} bereits vorhanden${res.relinked?`, ${res.relinked} Hallen zugeordnet`:''}${res.review?`, ${res.review} zu prüfen`:''}.`;
    return res;
   }catch(err){
